@@ -22,6 +22,7 @@
 
   <target name="GBrowse-Installation" depends="">
     <!-- nothing to install; GBrowse is installed by ApiCommonWebsite script -->
+    <ant target="defaultProjectInstall"/>
   </target>
 
   <!-- oooooooooooooooooo  Installation Postprocess  ooooooooooooooooooooo -->
