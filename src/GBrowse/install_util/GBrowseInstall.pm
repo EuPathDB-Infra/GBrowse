@@ -497,7 +497,8 @@ sub ACTION_install {
     my $metadb_script = File::Spec->catfile("bin", "gbrowse_metadb_config.pl");
     my $perl          = $self->perl;
     my @inc           = map{"-I$_"} split ':',$self->added_to_INC;
-    system $perl,@inc,$metadb_script;
+    # Database maintenance is the DBA's responsibility; don't let GBrowse install try to 'fix' database
+    #system $perl,@inc,$metadb_script;
     #system 'sudo','chown','-R',"$uid.$gid",$sessions,$userdata;
 
     #if (Module::Build->y_n(

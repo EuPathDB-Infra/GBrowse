@@ -767,8 +767,9 @@ sub state_cookie {
   my $cookie = CGI::Cookie->new(
       -name    => $CGI::Session::NAME,
       -value   => $id,
-      -path    => $path,
-      -expires => '+'.$globals->time2sec($globals->remember_settings_time).'s',
+      -path    => $path
+      # We want a session cookie; get it by not setting expiration date
+      # -expires => '+'.$globals->time2sec($globals->remember_settings_time).'s',
       );
   return $cookie;
 }
@@ -784,7 +785,8 @@ sub auth_cookie {
 		-value=> $auth,
 		-path => $path);
     if ($remember) {
-	push @args,(-expires => '+'.$globals->time2sec($globals->remember_settings_time).'s');
+        # We want a session cookie; get it by not setting expiration date
+        #push @args,(-expires => '+'.$globals->time2sec($globals->remember_settings_time).'s');
     }
     return CGI::Cookie->new(@args);
 }

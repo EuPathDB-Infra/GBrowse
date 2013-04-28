@@ -78,7 +78,46 @@ sub new {
 sub load_session {
     my $self = shift;
     $self->session_argv(@_);
-    return CGI::Session->new($self->session_argv);
+
+    my @sessionArgs = $self->session_argv;
+    my $driver = $sessionArgs[0];
+    my $sid = $sessionArgs[1];
+
+    # Get UserDB configuration; sessions will be shared with auth info
+    my $config = Bio::Graphics::Browser2->open_globals->getUserDbConfig;
+    my $connectionStr = $config->getConnectionString;
+    my $username = $config->getUsername;
+    my $password = $config->getPassword;
+    my $schema = $config->getSchema;
+    my $perfLogOn = $config->perfLogOn;
+
+    my $requestId = int(rand(10000));
+    my $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin Session_Connect_$requestId $before\n" if $perfLogOn;
+    
+    my $dbh = DBI->connect($connectionStr, $username, $password);
+
+    my $after = Time::HiRes::time();
+    my $diffTime =$after - $before;
+    print STDERR "TIMETEST::End Session_Connect_$requestId $before to $after = $diffTime\n" if $perfLogOn;
+    print STDERR "Connected to Oracle DB $connectionStr, setting LongReadLen and LongTruncOk.\n" if DEBUG;
+
+    $dbh->{LongReadLen} = 200000;
+    $dbh->{LongTruncOk} = 1; # RRD: not sure about this though- we will want to error if we can't read the entire session
+
+    print STDERR "Creating new session with driver $driver and $sid\n" if DEBUG;
+    $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin Session_Create_$requestId $before\n" if $perfLogOn;
+
+    my $cgiSession = CGI::Session->new($driver, $sid, { Handle => $dbh, TableName => $schema."SESSIONS" });
+
+    $after = Time::HiRes::time();
+    $diffTime =$after - $before;
+    print STDERR "TIMETEST::End Session_Create_$requestId $before to $after = $diffTime\n" if $perfLogOn;
+    print STDERR "Finished loading session.  Returning value:\n" if DEBUG;
+    print STDERR "$cgiSession\n" if DEBUG;
+
+    return $cgiSession;
 }
 
 sub session_argv {

@@ -25,19 +25,31 @@ sub new {
   my $globals = shift;
 
   my $VERSION = '0.5';
-  my $credentials  = $globals->user_account_db 
-      || "DBI:mysql:gbrowse_login;user=gbrowse;password=gbrowse";
   
-  my $login = DBI->connect($credentials);
+  my $dbSchema = $globals->getUserDbConfig->getSchema;
+  my $connectionString = $globals->getUserDbConfig->getConnectionString;
+  my $username = $globals->getUserDbConfig->getUsername;
+  my $password = $globals->getUserDbConfig->getPassword;
+  
+  my $requestId = int(rand(10000));
+  my $before = Time::HiRes::time();
+  print STDERR "TIMETEST::Begin DB_Connect_UserDB_$requestId $before\n" if $globals->getUserDbConfig->perfLogOn;
+
+  my $login   = DBI->connect($connectionString, $username, $password);
   unless ($login) {
-      confess "Could not open login database $credentials";
+      confess "Could not open login database $connectionString";
   }
+
+  my $after = Time::HiRes::time();
+  my $diffTime = $after - $before;
+  print STDERR "TIMETEST::End DB_Connect_UserDB_$requestId $before to $after = $diffTime\n" if $globals->getUserDbConfig->perfLogOn;
 
   my $self = bless {
       dbi      => $login,
       globals  => $globals,
       openid   => HAVE_OPENID,
       register => HAVE_SMTP,
+      dbSchema => $dbSchema
   }, ref $class || $class;
 
   return $self;
@@ -47,6 +59,7 @@ sub globals  {shift->{globals} };
 sub dbi      {shift->{dbi}     };
 sub can_openid   {shift->{openid}  };
 sub can_register {shift->{register}  };
+sub dbSchema { shift->{dbSchema} };
 
 sub generate_salted_digest {
     my $self     = shift;
@@ -155,10 +168,11 @@ sub check_old_confirmations {
   local $userdb->{AutoCommit} = 0;
   local $userdb->{RaiseError} = 1;
   eval {
-      my $ids = $userdb->selectcol_arrayref("SELECT userid FROM users WHERE confirmed=0 AND $days>3");
+  	  my $dbSchema = $self->dbSchema;
+      my $ids = $userdb->selectcol_arrayref("SELECT userid FROM ".$dbSchema."users WHERE confirmed=0 AND $days>3");
       for my $id (@$ids) {
-	  $userdb->do('DELETE FROM users   WHERE userid=?',undef,$id);
-	  $userdb->do('DELETE FROM session WHERE userid=?',undef,$id);
+	  $userdb->do('DELETE FROM ".$dbSchema."users   WHERE userid=?',undef,$id);
+	  $userdb->do('DELETE FROM ".$dbSchema."session_tbl WHERE userid=?',undef,$id);
       }
       $userdb->commit();
   };
@@ -173,7 +187,8 @@ sub check_old_confirmations {
 sub nowfun {
   my $self = shift;
   my $globals = $self->{globals};
-  return $globals->user_account_db =~ /sqlite/i ? "datetime('now','localtime')" : 'now()';
+  #return $globals->user_account_db =~ /sqlite/i ? "datetime('now','localtime')" : 'now()';
+  return '(select CURRENT_DATE from dual)';
 }
 
 #################### N O N - O P E N I D   F U N C T I O N S #####################
@@ -190,9 +205,10 @@ sub match_user {
     my $search = shift;
 
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $select = $userdb->prepare(<<END) or die $userdb->errstr;
 SELECT a.username,b.gecos,b.email 
-  FROM session as a,users as b
+  FROM ${dbSchema}session_tbl a, ${dbSchema}users b
  WHERE a.userid=b.userid
    AND (a.username LIKE ? OR
         b.gecos    LIKE ? OR
@@ -215,9 +231,10 @@ sub match_sharing_user {
     my $self   = shift;
     my ($source,$search) = @_;
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $select = $userdb->prepare(<<END) or die $userdb->errstr;
 SELECT a.username,b.gecos,b.email 
-  FROM session as a,users as b,uploads as c
+  FROM ${dbSchema}session_tbl a, ${dbSchema}users b, ${dbSchema}uploads c
  WHERE a.userid=b.userid
    AND a.userid=c.userid
    AND c.sharing_policy='public'
@@ -243,12 +260,12 @@ sub userid_from_username {
     my $username = shift;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$username);
 SELECT userid
-  FROM session as a
-  WHERE a.username=?
-  LIMIT 1
+  FROM ${dbSchema}session_tbl a
+  WHERE a.username=? and rownum=1
 END
 return $user_id;
 }
@@ -258,14 +275,13 @@ sub userid_from_email {
     my $email = shift;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$email);
 SELECT userid
-  FROM users as a
-  WHERE a.email=?
-  LIMIT 1
+  FROM ${dbSchema}users a
+  WHERE a.email=? and rownum=1
 END
-;
     return $user_id;
 }
 
@@ -274,12 +290,12 @@ sub userid_from_fullname {
     my $email = shift;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$email);
 SELECT userid
-  FROM users as a
-  WHERE a.gecos=?
-  LIMIT 1
+  FROM ${dbSchema}users a
+  WHERE a.gecos=? and rownum=1
 END
 ;
     return $user_id;
@@ -290,12 +306,12 @@ sub userid_from_uploadsid {
     my $uploadsid = shift;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my $user_id = 
 	$userdb->selectrow_array(<<END ,undef,$uploadsid);
 SELECT userid
-  FROM session as a
-  WHERE a.uploadsid=?
-  LIMIT 1
+  FROM ${dbSchema}session_tbl a
+  WHERE a.uploadsid=? and rownum=1
 END
 }
 
@@ -303,6 +319,7 @@ sub set_fullname_from_username {
     my $self = shift;
     my ($username,$fullname,$email) = @_;
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
 
     my $userid = $self->userid_from_username($username) or return;
 
@@ -310,16 +327,16 @@ sub set_fullname_from_username {
     local $userdb->{RaiseError} = 1;
     eval {
 	my ($rows) = $userdb->selectrow_array(<<END,undef,$userid);
-SELECT count(*) FROM users WHERE userid=?
+SELECT count(*) FROM ${dbSchema}users WHERE userid=?
 END
 ;
 	if ($rows > 0) {
-	    $userdb->do('UPDATE users SET gecos=?,email=? WHERE userid=?',undef,$fullname,$email||'',$userid);
+	    $userdb->do('UPDATE '.$dbSchema.'users SET gecos=?,email=? WHERE userid=?',undef,$fullname,$email||'',$userid);
 	} else {
 	    my $nowfun = $self->nowfun();
 	    my $email  = $email || ('unused_'.$self->create_key(32).'@nowhere.net');
 	    $userdb->do(<<END,undef,$userid,$fullname,$email);
-INSERT INTO users(userid,gecos,email,pass,remember,openid_only,confirmed,cnfrm_code,last_login,created)
+INSERT INTO ${dbSchema}users(userid,gecos,email,pass,remember,openid_only,confirmed,cnfrm_code,last_login,created)
 VALUES (?,?,?,'x',1,1,1,'x',$nowfun,$nowfun)
 END
 ;
@@ -336,11 +353,11 @@ sub sessionid_from_username {
     my $self = shift;
     my $username = shift;
     my $userdb   = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my $sessionid = $userdb->selectrow_array(<<END ,undef,$username);
 SELECT sessionid
-  FROM session as a
-  WHERE a.username=?
-  LIMIT 1
+  FROM ${dbSchema}session_tbl a
+  WHERE a.username=? and rownum=1
 END
 ;
     return $sessionid;
@@ -352,12 +369,12 @@ sub username_from_uploadsid {
     my $uploadsid = shift;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my $user_id = 
 	$userdb->selectrow_array(<<END ,undef,$uploadsid);
 SELECT username
-  FROM session as a
-  WHERE a.uploadsid=?
-  LIMIT 1
+  FROM ${dbSchema}session_tbl a
+  WHERE a.uploadsid=? and rownum=1
 END
 }
 
@@ -366,7 +383,8 @@ sub get_uploads_id {
     my $self = shift;
     my $userid = shift;
     my $userdb = $self->{dbi};
-    return $userdb->selectrow_array("SELECT uploadsid FROM session WHERE userid=?",
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array("SELECT uploadsid FROM ".$dbSchema."session_tbl WHERE userid=?",
 				    undef,$userid);
 }
 
@@ -374,7 +392,8 @@ sub get_sessionid {
     my $self = shift;
     my $userid = shift;
     my $userdb = $self->{dbi};
-    return $userdb->selectrow_array("SELECT sessionid FROM session WHERE userid=?",
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array("SELECT sessionid FROM ".$dbSchema."session_tbl WHERE userid=?",
 				    undef,$userid);
 }
 
@@ -382,7 +401,8 @@ sub accountinfo_from_username {
     my $self     = shift;
     my $username = shift;
     my $userdb = $self->dbi;
-    return $userdb->selectrow_array('SELECT a.gecos,a.email FROM users as a,session as b WHERE a.userid=b.userid AND b.username=?',
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array('SELECT a.gecos,a.email FROM '.$dbSchema.'users a, '.$dbSchema.'session_tbl b WHERE a.userid=b.userid AND b.username=?',
 				    undef,$username);
 }
 
@@ -395,16 +415,18 @@ sub username_from_userid {
     my $self = shift;
     my $userid = shift;
     my $userdb = $self->{dbi};
-    return $userdb->selectrow_array("SELECT username FROM session WHERE userid=?", undef, $userid) || 'an anonymous user';
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array("SELECT username FROM ".$dbSchema."session_tbl WHERE userid=?", undef, $userid) || 'an anonymous user';
 }
 
 sub username_from_sessionid {
     my $self = shift;
     my $sessionid = shift;
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     return $userdb->selectrow_array(<<END ,undef,$sessionid)||'an anonymous user';
-SELECT username FROM session
+SELECT username FROM ${dbSchema}session_tbl
  WHERE sessionid=?
 END
 }
@@ -413,10 +435,11 @@ sub fullname_from_sessionid {
     my $self = shift;
     my $sessionid = shift;
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     my ($fullname,$username) = $userdb->selectrow_array(<<END ,undef,$sessionid);
 SELECT b.gecos,a.username 
-  FROM session as a,users as b
+  FROM ${dbSchema}session_tbl a, ${dbSchema}users b
  WHERE a.userid=b.userid
    AND a.sessionid=?
 END
@@ -428,10 +451,11 @@ sub email_from_sessionid {
     my $self = shift;
     my $sessionid = shift;
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     my ($email) = $userdb->selectrow_array(<<END ,undef,$sessionid);
 SELECT b.email
-  FROM session as a,users as b
+  FROM ${dbSchema}session_tbl a, ${dbSchema}users b
  WHERE a.userid=b.userid
    AND a.sessionid=?
 END
@@ -443,9 +467,10 @@ sub userid_from_sessionid {
     my $self = shift;
     my $sessionid = shift;
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     my ($userid) = $userdb->selectrow_array(<<END ,undef,$sessionid);
-SELECT userid FROM session
+SELECT userid FROM ${dbSchema}session_tbl
  WHERE sessionid=?
 END
     ;
@@ -456,8 +481,9 @@ sub set_confirmed_from_username {
     my $self = shift;
     my $username = shift;
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $userid = $self->userid_from_username($username) or return;
-    return $userdb->do('UPDATE users SET confirmed=1 WHERE userid=?',undef,$userid);
+    return $userdb->do('UPDATE '.$dbSchema.'users SET confirmed=1 WHERE userid=?',undef,$userid);
 }
 
 # Check Uploads ID (User ID, Uploads ID) - Makes sure a user's ID is in the database.
@@ -466,14 +492,15 @@ sub check_uploads_id {
     croak "check_uploads_id() should no longer be necessary";
     my ($sessionid,$uploadsid) = @_;
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     my $rows = $userdb->selectrow_array(<<END ,undef,$sessionid,$uploadsid);
-SELECT count(*) FROM session
+SELECT count(*) FROM ${dbSchema}session_tbl
    WHERE sessionid=? and uploadsid=?
 END
     unless ($rows) {
         $userdb->do(<<END ,undef,$sessionid,$uploadsid);
-INSERT INTO session (sessionid,uploadsid)
+INSERT INTO ${dbSchema}session (sessionid,uploadsid)
      VALUES (?,?)
 END
 ;
@@ -497,18 +524,23 @@ sub add_named_session {
     my ($sessionid,$username) = @_;
 
     my $userdb  = $self->dbi;
+    my $dbSchema = $self->dbSchema;
 
     my $session = $self->globals->session($sessionid);
+    print STDERR "Comparing session ids: current: $sessionid, retrieved: $session->id\n";
     $session->id eq $sessionid or die "Sessionid unavailable";
     my $uploadsid = $session->uploadsid;
 
     my $insert_session  = $userdb->prepare(<<END );
-REPLACE INTO session (username,sessionid,uploadsid)
-     VALUES (?,?,?)
+MERGE INTO ${dbSchema}session_tbl USING dual ON (username = ?)
+   WHEN NOT MATCHED THEN INSERT (userid,username,sessionid,uploadsid) values (gbrowse_uid_seq.NEXTVAL,?,?,?)
+   WHEN MATCHED THEN UPDATE SET sessionid = ?, uploadsid = ?
 END
-    ;
+    # The above is a sloppy Oracle replacement for the following MySQL SQL:
+    #REPLACE INTO ${dbSchema}session_tbl (username,sessionid,uploadsid) VALUES (?,?,?)
     
-    $insert_session->execute($username,$sessionid,$uploadsid)
+    # Added extra params to match SQL above
+    $insert_session->execute($username,$username,$sessionid,$uploadsid,$sessionid,$uploadsid)
 	or return;
     return $userdb->last_insert_id('','','','');
 }
@@ -518,7 +550,8 @@ sub set_session_and_uploadsid {
     my ($userid,$sessionid,$uploadsid) = @_;
 
     my $userdb = $self->dbi;
-    $userdb->do('UPDATE session SET sessionid=?,uploadsid=? WHERE userid=?',
+    my $dbSchema = $self->dbSchema;
+    $userdb->do('UPDATE '.$dbSchema.'session_tbl SET sessionid=?,uploadsid=? WHERE userid=?',
 		undef,
 		$sessionid,$uploadsid,$userid) or die $userdb->errstr;
 }
@@ -527,15 +560,16 @@ sub delete_user_by_username {
     my $self = shift;
     my $username = shift;
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $userid = $self->userid_from_username($username) or return;
     local $userdb->{AutoCommit} = 0;
     local $userdb->{RaiseError} = 1;
     eval {
-	$userdb->do('DELETE FROM users        WHERE userid=?',undef,$userid);
-	$userdb->do('DELETE FROM session      WHERE userid=?',undef,$userid);
-	$userdb->do('DELETE FROM openid_users WHERE userid=?',undef,$userid);
-	$userdb->do('DELETE FROM uploads      WHERE userid=?',undef,$userid);
-	$userdb->do('DELETE FROM sharing      WHERE userid=?',undef,$userid);
+	$userdb->do('DELETE FROM '.$dbSchema.'users        WHERE userid=?',undef,$userid);
+	$userdb->do('DELETE FROM '.$dbSchema.'session_tbl  WHERE userid=?',undef,$userid);
+	$userdb->do('DELETE FROM '.$dbSchema.'openid_users WHERE userid=?',undef,$userid);
+	$userdb->do('DELETE FROM '.$dbSchema.'uploads      WHERE userid=?',undef,$userid);
+	$userdb->do('DELETE FROM '.$dbSchema.'sharing      WHERE userid=?',undef,$userid);
 	$userdb->commit();
     };
     if ($@) {
@@ -561,10 +595,12 @@ sub do_validate {
   my ($user,$pass,$remember) = @_;
   
   my $userdb = $self->{dbi};
+  my $dbSchema = $self->dbSchema;
   my $update;
 
   # remove dangling unconfirmed accounts here
-  $self->check_old_confirmations();
+  # RRD: don't need to delete unconfirmed accounts because all accounts are now automatically confirmed in WdkSessionAuthenticator
+  #$self->check_old_confirmations();
 
 #  return $self->string_result('Usernames cannot contain any backslashes, whitespace or non-ascii characters.')
   return $self->code_result('INVALID_NAME'=>'Usernames cannot contain any backslashes, whitespace or non-ascii characters.')
@@ -579,14 +615,15 @@ sub do_validate {
   # editing/updating.
   if($remember == 2) {
       $update = $userdb->prepare(
-	  "UPDATE users SET last_login=$nowfun WHERE userid=? AND confirmed=1");
+	  "UPDATE ".$dbSchema."users SET last_login=$nowfun WHERE userid=? AND confirmed=1");
   } else {
       $update = $userdb->prepare(
-	  "UPDATE users SET last_login=$nowfun,remember=$remember WHERE userid=? AND confirmed=1");
+	  "UPDATE ".$dbSchema."users SET last_login=$nowfun,remember=$remember WHERE userid=? AND confirmed=1");
   }
 
   my $select = $userdb->prepare(
-      "SELECT sessionid,email,confirmed,pass FROM users as a,session as b WHERE a.userid=b.userid and a.userid=?");
+      "SELECT sessionid,email,confirmed,pass FROM ".$dbSchema."users a, ".$dbSchema."session_tbl b WHERE a.userid=b.userid and a.userid=?");
+      
   $select->execute($userid)
       or return $self->dbi_err;
 
@@ -615,15 +652,17 @@ sub do_add_user_check {
   my ($user,$email,$fullname,$pass,$userid) = @_;
   
   my $userdb = $self->dbi;
+  my $dbSchema = $self->dbSchema;
   
-  return $self->string_result('Invalid e-mail address (',$email,') provided.')
-      unless $self->check_email($email);
+  # check_email function is broken for some cases; can't remember which though :(
+  #return $self->string_result('Invalid e-mail address (',$email,') provided.')
+  #    unless $self->check_email($email);
   
   return $self->string_result("Usernames cannot contain any backslashes, whitespace or non-ascii characters.")
       unless $self->check_user($user);
 
   my $select = $userdb->prepare(
-    "SELECT confirmed FROM users WHERE email=?");
+    "SELECT confirmed FROM ".${dbSchema}."users WHERE email=?");
   $select->execute($email)
       or return $self->dbi_err;
 
@@ -651,6 +690,7 @@ sub do_add_user {
 #  return $self->string_result('Success');
   
   my $userdb = $self->dbi;
+  my $dbSchema = $self->dbSchema;
   
   return $self->string_result("Invalid e-mail address (",$email,") provided.")
       unless $self->check_email($email);
@@ -675,7 +715,7 @@ sub do_add_user {
 	  or return $self->dbi_err;
 
       my $insert_userinfo = $userdb->prepare (<<END );
-INSERT INTO users (userid, gecos, email, pass, remember, openid_only, 
+INSERT INTO ${dbSchema}users (userid, gecos, email, pass, remember, openid_only, 
 		   confirmed, cnfrm_code, last_login, created)
      VALUES (?,?,?,?,0,0,0,?,$nowfun,$nowfun)
 END
@@ -700,7 +740,8 @@ END
   }
   
   else {
-      return $self->do_send_confirmation($email,$confirm,$user,$pass);
+      return $self->string_result('Success');
+      #return $self->do_send_confirmation($email,$confirm,$user,$pass);
   }
 
     return $self->programmer_error;
@@ -751,10 +792,11 @@ sub do_edit_confirmation {
   my ($email,$option) = @_;
   
   my $userdb = $self->{dbi};
+  my $dbSchema = $self->dbSchema;
 
   my $select = $userdb->prepare(<<END );
 SELECT b.username, a.userid, b.sessionid, a.gecos, a.cnfrm_code
-    FROM users as a,session as b 
+    FROM ${dbSchema}users a, ${dbSchema}session_tbl b 
     WHERE a.email=? AND a.userid=b.userid
 END
   $select->execute($email)
@@ -765,9 +807,9 @@ END
       eval {
 	  local $userdb->{AutoCommit} = 0;
 	  local $userdb->{RaiseError} = 1;
-	  $userdb->do("DELETE FROM users        WHERE userid=?",undef,$userid);
-	  $userdb->do("DELETE FROM openid_users WHERE userid=?",undef,$userid);
-	  $userdb->do("DELETE FROM session      WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".${dbSchema}."users        WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".${dbSchema}."openid_users WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".${dbSchema}."session_tbl  WHERE userid=?",undef,$userid);
 	  $userdb->commit();
       };
       if ($@) {
@@ -792,11 +834,12 @@ sub do_confirm_account {
   my $self = shift;
   my ($user,$confirm) = @_;
   my $userdb = $self->{dbi};
+  my $dbSchema = $self->dbSchema;
 
   my $new_confirm = sha1_hex($confirm);
 
   my ($rows) = $userdb->selectrow_array(
-    "SELECT count(*) FROM users WHERE cnfrm_code=? AND confirmed=0",
+    "SELECT count(*) FROM ".$dbSchema."users WHERE cnfrm_code=? AND confirmed=0",
     undef,
     $confirm);
 
@@ -805,14 +848,14 @@ sub do_confirm_account {
   my $userid = $self->userid_from_username($user);
 
   my $update = $userdb->prepare(
-    "UPDATE users SET confirmed=1,cnfrm_code=? WHERE userid=? AND cnfrm_code=? AND confirmed=0");
+    "UPDATE ".$dbSchema."users SET confirmed=1,cnfrm_code=? WHERE userid=? AND cnfrm_code=? AND confirmed=0");
   $update->execute($new_confirm,$userid,$confirm)
     or return $self->dbi_err;
 
   $rows = $update->rows;
   if ($rows == 1) {
     my $query = $userdb->prepare(
-      "SELECT b.sessionid FROM users as a,session as b WHERE b.username=? AND a.userid=b.userid AND cnfrm_code=? AND confirmed=1");
+      "SELECT b.sessionid FROM ".$dbSchema."users a, ".$dbSchema."session_tbl b WHERE b.username=? AND a.userid=b.userid AND cnfrm_code=? AND confirmed=1");
 
     $query->execute($user,$new_confirm)
       or return $self->dbi_err;
@@ -831,6 +874,7 @@ sub do_edit_details {
     my $self = shift;
     my ($user,$column,$old,$new,$session) = @_;
     my $userdb = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $userid = $self->userid_from_username($user)
 	or return $self->string_result("Error: unkown user $user");
 
@@ -843,7 +887,7 @@ sub do_edit_details {
     }
 
     if ($column eq 'pass') {
-	my ($pass) = $userdb->selectrow_array('SELECT pass FROM users WHERE userid=?',undef,$userid);
+	my ($pass) = $userdb->selectrow_array('SELECT pass FROM '.$dbSchema.'users WHERE userid=?',undef,$userid);
 	unless ($self->passwd_match($old,$pass)) {
 	    return $self->string_result("Incorrect password provided, please check your spelling.");
 	}
@@ -851,7 +895,7 @@ sub do_edit_details {
 	$old = $pass;
     }
 
-    my $querystring  = "UPDATE users       ";
+    my $querystring  = "UPDATE ".$dbSchema."users ";
     $querystring .= "   SET $column  = ?";
     $querystring .= " WHERE userid   = ?";
 
@@ -892,6 +936,7 @@ sub do_email_info {
   my $email = shift;
   my $globals = $self->{globals};
   my $userdb = $self->{dbi};
+  my $dbSchema = $self->dbSchema;
   
   return $self->string_result("Invalid e-mail address provided.")
       unless $self->check_email($email);
@@ -923,7 +968,7 @@ sub do_email_info {
 
   my $secret = $self->generate_salted_digest($pass);
   my $update = $userdb->prepare(
-    "UPDATE users SET pass=? WHERE userid=? AND email=? AND confirmed=1");
+    "UPDATE ".$dbSchema."users SET pass=? WHERE userid=? AND email=? AND confirmed=1");
   my $userid = $self->userid_from_username($user);
   $update->execute($secret,$userid,$email)
     or return $self->dbi_err;
@@ -935,9 +980,10 @@ sub set_password {
     my $self = shift;
     my ($userid,$password) = @_;
     my $userdb   = $self->dbi;
+    my $dbSchema = $self->dbSchema;
     my $secret = $self->generate_salted_digest($password);
     my $update = $userdb->prepare(
-	"UPDATE users SET pass=? WHERE userid=?") or die $userdb->errstr;
+	"UPDATE ".$dbSchema."users SET pass=? WHERE userid=?") or die $userdb->errstr;
     my $status = $update->execute($secret,$userid) or die $userdb->errstr;
     return $status;
 }
@@ -948,11 +994,12 @@ sub do_retrieve_user {
   my $email = shift;
   
   my $userdb = $self->{dbi};
+  my $dbSchema = $self->dbSchema;
   
   my @openids;
 
   my $users = $userdb->selectcol_arrayref(
-    "SELECT username FROM users as a,session as b WHERE a.userid=b.userid AND email=? AND confirmed=1",
+    "SELECT username FROM ".$dbSchema."users a, ".$dbSchema."session_tbl b WHERE a.userid=b.userid AND email=? AND confirmed=1",
   	undef,
   	$email)
   or return $self->dbi_err;
@@ -961,7 +1008,7 @@ sub do_retrieve_user {
   if ($rows == 1) {
     my $user  = $users->[0];
     my $query = $userdb->prepare(
-      "SELECT openid_url FROM openid_users,session WHERE openid_users.userid=session.userid and session.username=?");
+      "SELECT openid_url FROM ".$dbSchema."openid_users, ".$dbSchema."session_tbl WHERE openid_users.userid=session_tbl.userid and session_tbl.username=?");
     $query->execute($user)
       or return $self->dbi_err;
 
@@ -983,19 +1030,20 @@ sub do_delete_user {
   my ($user, $pass) = @_;
   
   my $userdb = $self->dbi;
+  my $dbSchema = $self->dbSchema;
   my $userid = $self->userid_from_username($user);
   return $self->string_result("Error: unknown user $user") unless $userid;
 
   my $sessionid = $self->get_sessionid($userid);
-  $userdb->do('DELETE FROM session where userid=?',undef,$userid);
+  $userdb->do('DELETE FROM '.$dbSchema.'session_tbl where userid=?',undef,$userid);
   my $session = $self->globals->session($sessionid);
   $session->delete;
   $session->flush;
 
-  $userdb->do('DELETE FROM users WHERE userid=?',undef,$userid);
+  $userdb->do('DELETE FROM '.$dbSchema.'users WHERE userid=?',undef,$userid);
 
   my $query = $userdb->prepare(
-    "DELETE FROM openid_users WHERE userid=?");
+    "DELETE FROM ".$dbSchema."openid_users WHERE userid=?");
   if ($query->execute($userid)) {
       return $self->string_result('Success');
   } else {
@@ -1048,6 +1096,7 @@ sub do_confirm_openid {
     my ($callbacks, $sessionid, $option,$email,$fullname) = @_;
     
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     
     my ($error, @results, $select, $user, $only);
 
@@ -1060,7 +1109,7 @@ sub do_confirm_openid {
 
     if ($option eq "openid-add") {
         ($user, $only) = $userdb->selectrow_array(
-	    "SELECT b.username,a.openid_only FROM users as a,session as b WHERE b.sessionid=? AND a.userid=b.userid",
+	    "SELECT b.username,a.openid_only FROM ".$dbSchema."users a, ".$dbSchema."session_tbl b WHERE b.sessionid=? AND a.userid=b.userid",
 	    undef,
 	    $sessionid)
 	    or return(200,'application/json',[{error=>'Error: '.$userdb->errstr.'.'}]);
@@ -1118,11 +1167,12 @@ sub do_get_openid {
     my ($openid,$email,$fullname) = @_;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     
     my $error;
 
     my $from = <<END;
-FROM users as A, openid_users as B, session as C
+FROM ${dbSchema}users A, ${dbSchema}openid_users B, ${dbSchema}session_tbl C
  WHERE A.userid     = B.userid
    AND A.userid     = C.userid
    AND A.confirmed  = 1
@@ -1153,7 +1203,7 @@ END
 
     my $nowfun = $self->nowfun();
     my $update = $userdb->prepare(
-        "UPDATE users SET last_login=$nowfun WHERE userid=? AND confirmed=1");
+        "UPDATE ".$dbSchema."users SET last_login=$nowfun WHERE userid=? AND confirmed=1");
     $update->execute($info[4])
 	or return {error=>'Error: '.$update->errstr.'.'};
 
@@ -1166,7 +1216,8 @@ sub do_change_openid {
     my ($user, $pass, $openid, $option) = @_;
 
     my $userdb = $self->dbi;
-    my $users = $userdb->selectrow_arrayref('SELECT a.userid FROM users as a,session as b WHERE b.username=? AND a.userid=b.userid',
+    my $dbSchema = $self->dbSchema;
+    my $users = $userdb->selectrow_arrayref('SELECT a.userid FROM '.$dbSchema.'users a, '.$dbSchema.'session_tbl b WHERE b.username=? AND a.userid=b.userid',
 					    undef,$user)
         or return $self->dbi_err;
     my $rows = @$users;
@@ -1178,18 +1229,18 @@ sub do_change_openid {
     }
 
     # if we get here, we are deleting
-    my ($correct_pass) = $userdb->selectrow_array('SELECT a.pass FROM users as a WHERE a.userid=?',undef,$users->[0])
+    my ($correct_pass) = $userdb->selectrow_array('SELECT a.pass FROM '.$dbSchema.'users a WHERE a.userid=?',undef,$users->[0])
 	or return $self->dbi_err;
     
     $self->passwd_match($pass,$correct_pass)
 	or return $self->string_result('Invalid password. Please try again.');
 
     my $delete = $userdb->prepare(<<END );
-DELETE FROM openid_users
+DELETE FROM ${dbSchema}openid_users
       WHERE openid_url=?
         AND userid IN (
                    SELECT a.userid
-                     FROM openid_users as a,session as b
+                     FROM ${dbSchema}openid_users a, ${dbSchema}session_tbl b
                     WHERE a.userid=b.userid
                       AND b.username=?
             )
@@ -1213,12 +1264,13 @@ sub do_add_openid_to_account {
     my ($sessionid, $user, $openid, $only) = @_;
     
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
     my $error;
 
     my $userid = $self->userid_from_sessionid($sessionid)
 	or return {user=>$user,only=>$only,error=>"Error: No userid associated with the current session"};
     
-    my $insert = $userdb->prepare("INSERT INTO openid_users (userid,openid_url) VALUES (?,?)");
+    my $insert = $userdb->prepare("INSERT INTO ".$dbSchema."openid_users (userid,openid_url) VALUES (?,?)");
     if($insert->execute($userid, $openid)) {
         $error = "Success";
     } else {
@@ -1237,6 +1289,7 @@ sub do_add_openid_user {
     my ($user, $email, $gecos, $openid, $sessionid, $remember) = @_;
 
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     return $self->string_result("Usernames cannot contain any backslashes, whitespace or non-ascii characters.")
 	unless $self->check_user($user);
@@ -1253,7 +1306,7 @@ sub do_add_openid_user {
 	    or return $self->dbi_err;
 	    
 	my $query  = $userdb->prepare(<<END );
-INSERT INTO users (userid,email,gecos,pass,remember,openid_only,confirmed,cnfrm_code,last_login,created) 
+INSERT INTO ${dbSchema}users (userid,email,gecos,pass,remember,openid_only,confirmed,cnfrm_code,last_login,created) 
      VALUES (?,?,?,?,?,1,1,?, $nowfun, $nowfun)
 END
 ;
@@ -1261,7 +1314,7 @@ END
 	$query->execute($userid, $email, $gecos, $pass, $remember, $confirm)
 	    or return $self->dbi_err;
 
-	my $insert = $userdb->prepare("INSERT INTO openid_users (userid,openid_url) VALUES (?,?)");
+	my $insert = $userdb->prepare("INSERT INTO ".$dbSchema."openid_users (userid,openid_url) VALUES (?,?)");
 	$insert->execute($userid, $openid) or die "Couldn't insert url into openid_users table: ",$insert->errstr;
 
 	$userdb->commit();
@@ -1296,9 +1349,10 @@ sub do_list_openid {
     my $user = shift;
     my ($error,@openids);
     my $userdb = $self->{dbi};
+    my $dbSchema = $self->dbSchema;
 
     my $select = $userdb->prepare(
-        "SELECT a.openid_url FROM openid_users as a,session as b WHERE b.username=? AND a.userid=b.userid");
+        "SELECT a.openid_url FROM ".$dbSchema."openid_users a, ".$dbSchema."session_tbl b WHERE b.username=? AND a.userid=b.userid");
     $select->execute($user) or return (200,'application/json',[{error=>'Error: '.$userdb->errstr.'.'}]);
 
     while (my $openid = $select->fetchrow_array) {
@@ -1343,7 +1397,8 @@ sub remember {
     my $self = shift;
     my $userid = shift;
     my $userdb = $self->{dbi};
-    return $userdb->selectrow_array("SELECT remember FROM users WHERE userid = ?", undef, $userid);
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array("SELECT remember FROM ".$dbSchema."users WHERE userid = ?", undef, $userid);
 }
 
 # Remember (User) - Get's if a user is using OpenID login.
@@ -1351,7 +1406,8 @@ sub using_openid {
     my $self = shift;
     my $userid = shift;
     my $userdb = $self->{dbi};
-    return $userdb->selectrow_array("SELECT userid FROM openid_users WHERE userid = ?", undef, $userid)? "true" : "false";
+    my $dbSchema = $self->dbSchema;
+    return $userdb->selectrow_array("SELECT userid FROM ".$dbSchema."openid_users WHERE userid = ?", undef, $userid)? "true" : "false";
 }
 
 sub clone_database {
@@ -1367,7 +1423,7 @@ CREATE TABLE dbinfo (
     schema_version int(10) not null UNIQUE
 );
 
-CREATE TABLE session (
+CREATE TABLE session_tbl (
     userid integer PRIMARY KEY autoincrement, 
     username varchar(32),
     sessionid char(32) not null UNIQUE

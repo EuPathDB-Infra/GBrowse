@@ -713,9 +713,9 @@ function login_user(username,session,remember) {
 }
 
 //Refresh the page with the user logged in
-function login_get_account(username,session,remember,openid) {
+function login_get_account(username,session,remember,openid,ajax_url_base,redirectUrl) {
     if ($('loginBusy') != null) $('loginBusy').show();
-    new Ajax.Request(Controller.url,{
+    new Ajax.Request(ajax_url_base,{
         method:      'post',
         parameters: {action:   'authorize_login',
                      username: username,
@@ -736,7 +736,15 @@ function login_get_account(username,session,remember,openid) {
                         login_get_account_error();
                     }
                 } else {
-                    login_load_account(String(location.href).split('?')[0],results);
+                    // update progressbar to "almost there" while redirecting
+                    GB.updateProgress(95, 0);
+
+                    // set gbrowse cookies explicitly instead of getting them from gbrowse response
+                    jQuery.cookies.set('gbrowse2_sess', results.id, {path: '/cgi-bin/'});
+                    jQuery.cookies.set('authority', results.authority, {path: '/cgi-bin/'});
+
+                    window.location = redirectUrl;
+                    return;
                 }
             }
         }
