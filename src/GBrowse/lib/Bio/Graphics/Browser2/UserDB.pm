@@ -662,7 +662,7 @@ sub do_add_user_check {
       unless $self->check_user($user);
 
   my $select = $userdb->prepare(
-    "SELECT confirmed FROM ".${dbSchema}."users WHERE email=?");
+    "SELECT confirmed FROM ".$dbSchema."users WHERE email=?");
   $select->execute($email)
       or return $self->dbi_err;
 
@@ -807,9 +807,9 @@ END
       eval {
 	  local $userdb->{AutoCommit} = 0;
 	  local $userdb->{RaiseError} = 1;
-	  $userdb->do("DELETE FROM ".${dbSchema}."users        WHERE userid=?",undef,$userid);
-	  $userdb->do("DELETE FROM ".${dbSchema}."openid_users WHERE userid=?",undef,$userid);
-	  $userdb->do("DELETE FROM ".${dbSchema}."session_tbl  WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".$dbSchema."users        WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".$dbSchema."openid_users WHERE userid=?",undef,$userid);
+	  $userdb->do("DELETE FROM ".$dbSchema."session_tbl  WHERE userid=?",undef,$userid);
 	  $userdb->commit();
       };
       if ($@) {
