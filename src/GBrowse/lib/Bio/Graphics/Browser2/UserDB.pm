@@ -533,7 +533,7 @@ sub add_named_session {
 
     my $insert_session  = $userdb->prepare(<<END );
 MERGE INTO ${dbSchema}session_tbl USING dual ON (username = ?)
-   WHEN NOT MATCHED THEN INSERT (userid,username,sessionid,uploadsid) values (gbrowse_uid_seq.NEXTVAL,?,?,?)
+   WHEN NOT MATCHED THEN INSERT (userid,username,sessionid,uploadsid) values (${dbSchema}gbrowse_uid_seq.NEXTVAL,?,?,?)
    WHEN MATCHED THEN UPDATE SET sessionid = ?, uploadsid = ?
 END
     # The above is a sloppy Oracle replacement for the following MySQL SQL:
