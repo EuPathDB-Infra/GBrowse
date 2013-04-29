@@ -5,7 +5,7 @@ use Carp;
 use XML::Simple;
 use File::Basename;
 use Data::Dumper;
-#use Bio::Graphics::Browser2::DbUtils qw(jdbc2oracleDbi dbi2connectString);
+use Bio::Graphics::Browser2::DbUtils qw(resolveOracleDSN);
 
 sub new {
     my $class = shift;
@@ -15,16 +15,15 @@ sub new {
         ForceArray => 1
     );
 
-    # build connection string based on other values
-    my $host = $cfg->{'host'}[0];
-    my $serviceName = $cfg->{'serviceName'}[0];
-    my $port = $cfg->{'port'}[0];
-    my $connectionString = "DBI:Oracle:HOST=".$host.";SERVICE_NAME=".$serviceName.";PORT=".$port;
+    # resolve the Oracle TNS name into a connection string DBI understands
+    my $connectionDsn = $cfg->{'connectionDsn'}[0];
+    my $connectionString = resolveOracleDSN("Bio::Graphics::Browser2::DbUtils", $connectionDsn);
 
     # add trailing dot to schema if not already present
     my $schema = $cfg->{'schema'}[0];
     $schema .= "." if ($schema !~ /\.$/);
 
+    # check if performance logging turned on (default off)
     my $perfLogOn = $cfg->{'loggingOn'} ||= 0;
 
     my $self = bless {
