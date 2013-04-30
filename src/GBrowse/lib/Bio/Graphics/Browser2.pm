@@ -125,9 +125,7 @@ sub db_base        {
     return $base || File::Spec->catfile(shift->persistent_base,'databases');
 }
 sub userdata_base  { 
-    my $self = shift;
-    my $base = $self->setting(general=>'userdata_base');
-    return $base ||  File::Spec->catfile($self->persistent_base,'userdata');
+    return "/var/www/Common/gbrowse_data".$ENV{'CONTEXT_PATH'}."/userdata";
 }
 
 # these are url-relative options
