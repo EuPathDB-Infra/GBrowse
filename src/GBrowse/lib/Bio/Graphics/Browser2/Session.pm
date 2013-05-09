@@ -85,7 +85,7 @@ sub load_session {
 
     # Get UserDB configuration; sessions will be shared with auth info
     my $config = Bio::Graphics::Browser2->open_globals->getUserDbConfig;
-    my $connectionStr = $config->getConnectionString;
+    my $connectionStr = $config->getDbiString;
     my $username = $config->getUsername;
     my $password = $config->getPassword;
     my $schema = $config->getSchema;

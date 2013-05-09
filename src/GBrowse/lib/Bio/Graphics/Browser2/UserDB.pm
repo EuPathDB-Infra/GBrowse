@@ -27,7 +27,7 @@ sub new {
   my $VERSION = '0.5';
   
   my $dbSchema = $globals->getUserDbConfig->getSchema;
-  my $connectionString = $globals->getUserDbConfig->getConnectionString;
+  my $connectionString = $globals->getUserDbConfig->getDbiString;
   my $username = $globals->getUserDbConfig->getUsername;
   my $password = $globals->getUserDbConfig->getPassword;
   
