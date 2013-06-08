@@ -245,12 +245,13 @@ function getChildren(node) {
 
 // getName returns the name of a node, as displayed in the control.
 function getName(node) {
+  var track_name = '';
   if (isGroup(node)) {
-    return (node.previous("div.ctl_visible"))? node.previous("div.ctl_visible").down("span.tctl > b").innerHTML : node.previous("div").down("div.ctl_visible").down("span.tctl > b").innerHTML;
+    track_name = (node.previous("div.ctl_visible"))? node.previous("div.ctl_visible").down("span.tctl > b").innerHTML : node.previous("div").down("div.ctl_visible").down("span.tctl > b").innerHTML;
   } else {
-      var track_name = node.down("span").innerHTML.stripTags();
-      return track_name.replace(/^\s+|\s+$/g,"");;
+      track_name = node.down("span").innerHTML.stripTags();
   }
+  return track_name.replace(/^\s+|\s+$/g,"");;
 }
 
 // visibility toggles a track listing node as open or closed.
