@@ -71,6 +71,6 @@ sub getPassword    { shift->{'password'} };
 sub getSchema      { shift->{'schema'} };
 sub perfLogOn      { shift->{'perfLogOn'} };
 sub getDbType      { shift->{'dbType'} };
-sub isOracle       { (shift->{'dbType'} == 'oracle'); };
-sub isPostgres     { (shift->{'dbType'} == 'postgres'); };
+sub isOracle       { (shift->{'dbType'} eq 'oracle'); };
+sub isPostgres     { (shift->{'dbType'} eq 'postgres'); };
 1;

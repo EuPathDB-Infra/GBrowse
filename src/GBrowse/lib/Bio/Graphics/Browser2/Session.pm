@@ -84,7 +84,8 @@ sub load_session {
     my $sid = $sessionArgs[1];
 
     # Get UserDB configuration; sessions will be shared with auth info
-    my $config = Bio::Graphics::Browser2->open_globals->getUserDbConfig;
+    my $globals = Bio::Graphics::Browser2->open_globals;
+    my $config = $globals->getUserDbConfig;
     my $connectionStr = $config->getDbiString;
     my $username = $config->getUsername;
     my $password = $config->getPassword;
@@ -102,9 +103,11 @@ sub load_session {
     print STDERR "TIMETEST::End Session_Connect_$requestId $before to $after = $diffTime\n" if $perfLogOn;
     print STDERR "Connected to Oracle DB $connectionStr, setting LongReadLen and LongTruncOk.\n" if DEBUG;
 
-    $dbh->{LongReadLen} = 200000;
-    $dbh->{LongTruncOk} = 1; # RRD: not sure about this though- we will want to error if we can't read the entire session
-
+    if ($globals->getUserDbConfig->isOracle) {
+        $dbh->{LongReadLen} = 200000;
+        $dbh->{LongTruncOk} = 1; # RRD: not sure about this though- we will want to error if we can't read the entire session
+    }
+    
     print STDERR "Creating new session with driver $driver and $sid\n" if DEBUG;
     $before = Time::HiRes::time();
     print STDERR "TIMETEST::Begin Session_Create_$requestId $before\n" if $perfLogOn;

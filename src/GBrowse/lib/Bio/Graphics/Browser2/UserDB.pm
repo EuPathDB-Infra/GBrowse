@@ -187,8 +187,7 @@ sub check_old_confirmations {
 sub nowfun {
   my $self = shift;
   my $globals = $self->{globals};
-  #return $globals->user_account_db =~ /sqlite/i ? "datetime('now','localtime')" : 'now()';
-  return '(select CURRENT_DATE from dual)';
+  return $globals->getUserDbConfig->isOracle ? '(select CURRENT_DATE from dual)' : 'now()';
 }
 
 #################### N O N - O P E N I D   F U N C T I O N S #####################
@@ -261,11 +260,12 @@ sub userid_from_username {
 
     my $userdb = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$username);
 SELECT userid
   FROM ${dbSchema}session_tbl a
-  WHERE a.username=? and rownum=1
+  WHERE a.username=? $singleResult
 END
 return $user_id;
 }
@@ -276,11 +276,12 @@ sub userid_from_email {
 
     my $userdb = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$email);
 SELECT userid
   FROM ${dbSchema}users a
-  WHERE a.email=? and rownum=1
+  WHERE a.email=? $singleResult
 END
     return $user_id;
 }
@@ -291,11 +292,12 @@ sub userid_from_fullname {
 
     my $userdb = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my ($user_id) = 
 	$userdb->selectrow_array(<<END ,undef,$email);
 SELECT userid
   FROM ${dbSchema}users a
-  WHERE a.gecos=? and rownum=1
+  WHERE a.gecos=? $singleResult
 END
 ;
     return $user_id;
@@ -307,11 +309,12 @@ sub userid_from_uploadsid {
 
     my $userdb = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my $user_id = 
 	$userdb->selectrow_array(<<END ,undef,$uploadsid);
 SELECT userid
   FROM ${dbSchema}session_tbl a
-  WHERE a.uploadsid=? and rownum=1
+  WHERE a.uploadsid=? $singleResult
 END
 }
 
@@ -354,10 +357,11 @@ sub sessionid_from_username {
     my $username = shift;
     my $userdb   = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my $sessionid = $userdb->selectrow_array(<<END ,undef,$username);
 SELECT sessionid
   FROM ${dbSchema}session_tbl a
-  WHERE a.username=? and rownum=1
+  WHERE a.username=? $singleResult
 END
 ;
     return $sessionid;
@@ -370,11 +374,12 @@ sub username_from_uploadsid {
 
     my $userdb = $self->{dbi};
     my $dbSchema = $self->dbSchema;
+    my $singleResult = $self->{globals}->getUserDbConfig->isOracle ? 'and rownum=1' : 'limit 1';
     my $user_id = 
 	$userdb->selectrow_array(<<END ,undef,$uploadsid);
 SELECT username
   FROM ${dbSchema}session_tbl a
-  WHERE a.uploadsid=? and rownum=1
+  WHERE a.uploadsid=? $singleResult
 END
 }
 
@@ -531,17 +536,50 @@ sub add_named_session {
     $session->id eq $sessionid or die "Sessionid unavailable";
     my $uploadsid = $session->uploadsid;
 
-    my $insert_session  = $userdb->prepare(<<END );
+    if ($self->{globals}->getUserDbConfig->isOracle) {
+        # Modified merge statement for Oracle
+        my $insert_session = $userdb->prepare(<<END );
 MERGE INTO ${dbSchema}session_tbl USING dual ON (username = ?)
    WHEN NOT MATCHED THEN INSERT (userid,username,sessionid,uploadsid) values (${dbSchema}gbrowse_uid_seq.NEXTVAL,?,?,?)
    WHEN MATCHED THEN UPDATE SET sessionid = ?, uploadsid = ?
 END
-    # The above is a sloppy Oracle replacement for the following MySQL SQL:
-    #REPLACE INTO ${dbSchema}session_tbl (username,sessionid,uploadsid) VALUES (?,?,?)
-    
-    # Added extra params to match SQL above
-    $insert_session->execute($username,$username,$sessionid,$uploadsid,$sessionid,$uploadsid)
-	or return;
+        # Added extra params to match SQL above
+        $insert_session->execute($username,$username,$sessionid,$uploadsid,$sessionid,$uploadsid) or return;
+    }
+    elsif ($self->{globals}->getUserDbConfig->isPostgres) {
+    	# Modified merge statement for PostgreSQL
+        my $insert_session = $userdb->prepare(<<END );
+WITH upsert AS (
+   UPDATE ${dbSchema}session_tbl s SET sessionid = ?, uploadsid = ? WHERE username = ?
+   RETURNING s.*
+)
+INSERT INTO ${dbSchema}session_tbl (userid,username,sessionid,uploadsid)
+	SELECT NEXTVAL('${dbSchema}gbrowse_uid_seq'), ?, ?, ?
+	FROM (SELECT COUNT(1) AS result FROM upsert) n
+	WHERE n.result = 0
+END
+# Simplified example of how to do the above (working in 9.2)
+#WITH upsert AS (
+#  UPDATE table1 s SET sessionid = '789' WHERE name = 'Ryan5'
+#  RETURNING s.*
+#)
+#INSERT INTO table1 (id, name, sessionid) (
+#  SELECT NEXTVAL('myseq'), 'Ryan5', '789'
+#  FROM (SELECT COUNT(1) AS num FROM upsert) n
+#  WHERE n.num = 0
+#)
+        # Added extra params to match SQL above
+        $insert_session->execute($sessionid,$uploadsid,$username,$username,$sessionid,$uploadsid) or return;
+
+    } else {
+        # The above is a sloppy Oracle replacement for the following MySQL SQL
+        my $insert_session = $userdb->prepare(<<END );
+REPLACE INTO ${dbSchema}session_tbl (username,sessionid,uploadsid) VALUES (?,?,?)
+END
+        # Original params for MySQL/SQLite statement
+        $insert_session->execute($username,$sessionid,$uploadsid) or return;
+    }
+
     return $userdb->last_insert_id('','','','');
 }
 

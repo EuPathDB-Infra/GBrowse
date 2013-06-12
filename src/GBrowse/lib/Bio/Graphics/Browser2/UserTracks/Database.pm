@@ -107,7 +107,7 @@ sub filename {
 sub nowfun {
     my $self = shift;
     my $globals = $self->{globals};
-    return '(select CURRENT_DATE from dual)';
+    return $globals->getUserDbConfig->isOracle ? '(select CURRENT_DATE from dual)' : 'now()';
 }
 
 # Get Uploaded Files () - Returns an array of the paths of files owned by the currently logged-in user. Can be publicly accessed.
@@ -201,13 +201,19 @@ END
     # Order results
     $sql .= " ORDER BY public_count DESC";
 
-    # Wrap query with rownum constraints
-    $sql = "SELECT trackid"
-          ." FROM ("
-          ."   SELECT a.trackid, rownum rnum"
-          ."   FROM ( $sql ) a"
-          ."   WHERE rownum < $rownumEnd )"
-          ." WHERE rnum >= $rownumStart";
+    if ($globals->getUserDbConfig->isOracle) {
+        # Wrap query with rownum constraints
+        $sql = "SELECT trackid"
+              ." FROM ("
+              ."   SELECT a.trackid, rownum rnum"
+              ."   FROM ( $sql ) a"
+              ."   WHERE rownum < $rownumEnd )"
+              ." WHERE rnum >= $rownumStart";
+    } else { # postgres
+    	# Add count and limit constraints
+    	$sql .= " LIMIT $count";
+        $sql .= " OFFSET $offset" if $offset;
+    }
 
     my $rows = $uploadsdb->selectcol_arrayref($sql);
     return @$rows;
