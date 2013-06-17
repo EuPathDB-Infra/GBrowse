@@ -1794,7 +1794,7 @@ sub plugin_menu {
 
   my $labels   = $plugins->menu_labels;
 
-  my @plugins  = grep {$plugins->plugin($_)->type ne 'trackfilter'}  # track filter gets its own special position
+  my @plugins  = grep {$plugins->plugin($_)->type ne 'trackfilter' && $plugins->plugin($_)->type ne 'authenticator'}  # track filter gets its own special position
                  sort {$labels->{$a} cmp $labels->{$b}} keys %$labels;
 
   # Add plugin types as attribute so the javascript controller knows what to do
