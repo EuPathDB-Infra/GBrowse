@@ -27,7 +27,20 @@
       <property name="project" value="GBrowse"/>
     </ant>
   </target>
-
+  
+  <target name="GBrowse-WebInstallation" depends="GBrowse-Installation">
+    <!-- NEW! install gbrowse here now with minimal changes to codebase (will clean up later) -->
+    <!-- $SITE_REPO/$SITE_DIR/project_home/ApiCommonWebsite/Model/bin/install_gbrowse2 $SITE_REPO/$SITE_DIR/etc/webapp.prop build_install_patch -->
+    <exec dir="${projectsDir}/ApiCommonWebsite/Model/bin"
+               executable="/bin/sh"
+               failonerror="true"
+               failifexecutionfails="true">
+           <arg line="install_gbrowse2"/>
+           <arg line="${webPropFile}"/>
+           <arg line="build_install_patch"/>
+        </exec>
+  </target>
+  
   <!-- oooooooooooooooooo  Installation Postprocess  ooooooooooooooooooooo -->
 
   <target name="GBrowse-Installation-postprocess"/>
