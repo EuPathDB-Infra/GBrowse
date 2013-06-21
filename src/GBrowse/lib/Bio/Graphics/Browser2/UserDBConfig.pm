@@ -7,22 +7,22 @@ use File::Basename;
 use Data::Dumper;
 use Bio::Graphics::Browser2::DbUtils qw(resolveOracleDSN jdbc2oracleDbi jdbc2postgresDbi);
 
+
+my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
+my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
+my $USE_CUSTOM_CONFIG_FILE = 1;
+my $DEFAULT_SCHEMA_NAME = "gbrowseUsers";
+
 sub new {
     my $class = shift;
-    
-    my $configFile = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
 
-    unless (-e $configFile) {
-    	die "Config file does not exist.  Looking for $configFile\n";
-    }
-
-    my $cfg = XMLin($configFile, ForceArray => 1);
+    my ($dbType, $jdbcString, $username, $password, $schema, $perfLogOn) =
+        $USE_CUSTOM_CONFIG_FILE ? parseCustomConfig() : parseStandardConfig();
 
     # check DB type
-    my $dbType = lc($cfg->{'dbType'}[0] ||= "oracle"); # default to Oracle
+    my $dbType = lc($dbType ||= "oracle"); # default to Oracle
     
-    # get connection string; this will be a JDBC value
-    my $jdbcString = $cfg->{'connectionDsn'}[0];
+    # convert connection string (JDBC value) to DBI value
     my $dbiString;
     
     if ($dbType eq "oracle") {
@@ -44,23 +44,57 @@ sub new {
     }
     
     # add trailing dot to schema if not already present
-    my $schema = $cfg->{'schema'}[0];
     $schema .= "." if ($schema !~ /\.$/);
-
-    # check if performance logging turned on (default off)
-    my $perfLogOn = $cfg->{'loggingOn'} ||= 0;
 
     my $self = bless {
         dbiString   => $dbiString,
         jdbcString  => $jdbcString,
-        username    => $cfg->{'username'}[0],
-        password    => $cfg->{'password'}[0],
+        username    => $username,
+        password    => $password,
         schema      => $schema,
         perfLogOn   => $perfLogOn,
         dbType      => $dbType
     }, ref $class || $class;
     
     return $self;
+}
+
+sub parseXml {
+	my $configFile = $_[0];
+	print "Parsing $configFile\n";
+    unless (-e $configFile) {
+        die "Config file does not exist.  Looking for $configFile\n";
+    }
+    return XMLin($configFile, ForceArray => 1);
+}
+
+# must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
+sub parseStandardConfig {
+	print "Inside standard, using $STANDARD_CONFIG_FILE\n";
+    my $modelConf = parseXml($STANDARD_CONFIG_FILE);
+    my $cfg = $modelConf->{'userDb'}[0];
+    return (
+        $cfg->{'platform'},
+        $cfg->{'connectionUrl'},
+        $cfg->{'login'},
+        $cfg->{'password'},
+        $DEFAULT_SCHEMA_NAME,     # schema is hard-coded in the general case
+        0                         # can't turn logging on without custom config
+    );
+}
+
+# must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
+sub parseCustomConfig {
+	print "Inside custom, using $CUSTOM_CONFIG_FILE\n";
+    my $cfg = parseXml($CUSTOM_CONFIG_FILE);
+    return (
+        $cfg->{'dbType'}[0],
+        $cfg->{'connectionDsn'}[0],
+        $cfg->{'username'}[0],
+        $cfg->{'password'}[0],
+        $cfg->{'schema'}[0] ||= $DEFAULT_SCHEMA_NAME,
+        $cfg->{'loggingOn'}[0] ||= 0  # logging turned off by default
+    );
 }
 
 # db connection params
