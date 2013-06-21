@@ -69,7 +69,7 @@ sub parseXml {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseStandardConfig {
-	print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
+    print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
     my $modelConf = parseXml($STANDARD_CONFIG_FILE);
     my $cfg = $modelConf->{'userDb'}[0];
     return (
@@ -84,7 +84,7 @@ sub parseStandardConfig {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseCustomConfig {
-	print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
+    print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
     my $cfg = parseXml($CUSTOM_CONFIG_FILE);
     return (
         $cfg->{'dbType'}[0],
