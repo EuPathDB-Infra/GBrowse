@@ -7,7 +7,6 @@ use File::Basename;
 use Data::Dumper;
 use Bio::Graphics::Browser2::DbUtils qw(resolveOracleDSN jdbc2oracleDbi jdbc2postgresDbi);
 
-
 my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
 my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
 my $USE_CUSTOM_CONFIG_FILE = 1;
@@ -70,7 +69,7 @@ sub parseXml {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseStandardConfig {
-	print "Inside standard, using $STANDARD_CONFIG_FILE\n";
+	print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
     my $modelConf = parseXml($STANDARD_CONFIG_FILE);
     my $cfg = $modelConf->{'userDb'}[0];
     return (
@@ -85,7 +84,7 @@ sub parseStandardConfig {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseCustomConfig {
-	print "Inside custom, using $CUSTOM_CONFIG_FILE\n";
+	print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
     my $cfg = parseXml($CUSTOM_CONFIG_FILE);
     return (
         $cfg->{'dbType'}[0],
