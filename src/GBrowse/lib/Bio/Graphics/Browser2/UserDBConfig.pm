@@ -25,21 +25,21 @@ sub new {
     my $dbiString;
     
     if ($dbType eq "oracle") {
-    	$dbiString = jdbc2oracleDbi($jdbcString);
-    	if (-e "$ENV{ORACLE_HOME}/bin/tnsping") {
+        $dbiString = jdbc2oracleDbi($jdbcString);
+        if (-e "$ENV{ORACLE_HOME}/bin/tnsping") {
           # attempt to resolve the Oracle TNS name into a connection string DBI understands
           $dbiString = resolveOracleDSN("Bio::Graphics::Browser2::DbUtils", $dbiString);
-    	}
-    	else {
-    	  print STDERR "WARNING: Found Oracle DSN but cannot find tnsping utility; if your ".
-    	    "connection string contains a TNS name, it may not be properly resolved.\n";
-    	}
+        }
+        else {
+          print STDERR "WARNING: Found Oracle DSN but cannot find tnsping utility; if your ".
+            "connection string contains a TNS name, it may not be properly resolved.\n";
+        }
     }
     elsif ($dbType eq "postgres") {
-    	$dbiString = jdbc2postgresDbi($jdbcString);
+        $dbiString = jdbc2postgresDbi($jdbcString);
     }
     else {
-    	die "Only 'oracle' and 'postgres' are valid values for dbType. '$dbType' is unsupported.";
+        die "Only 'oracle' and 'postgres' are valid values for dbType. '$dbType' is unsupported.";
     }
     
     # add trailing dot to schema if not already present
@@ -59,8 +59,8 @@ sub new {
 }
 
 sub parseXml {
-	my $configFile = $_[0];
-	print "Parsing $configFile\n";
+    my $configFile = $_[0];
+    print STDERR "Parsing $configFile\n";
     unless (-e $configFile) {
         die "Config file does not exist.  Looking for $configFile\n";
     }
