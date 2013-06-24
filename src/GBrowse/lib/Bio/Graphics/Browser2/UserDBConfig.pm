@@ -9,7 +9,7 @@ use Bio::Graphics::Browser2::DbUtils qw(resolveOracleDSN jdbc2oracleDbi jdbc2pos
 
 my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
 my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
-my $USE_CUSTOM_CONFIG_FILE = 1;
+my $USE_CUSTOM_CONFIG_FILE = 0;
 my $DEFAULT_SCHEMA_NAME = "gbrowseUsers";
 
 sub new {
@@ -19,7 +19,7 @@ sub new {
         $USE_CUSTOM_CONFIG_FILE ? parseCustomConfig() : parseStandardConfig();
 
     # check DB type
-    my $dbType = lc($dbType ||= "oracle"); # default to Oracle
+    $dbType = lc($dbType ||= "oracle"); # default to Oracle
     
     # convert connection string (JDBC value) to DBI value
     my $dbiString;
@@ -27,12 +27,12 @@ sub new {
     if ($dbType eq "oracle") {
         $dbiString = jdbc2oracleDbi($jdbcString);
         if (-e "$ENV{ORACLE_HOME}/bin/tnsping") {
-          # attempt to resolve the Oracle TNS name into a connection string DBI understands
-          $dbiString = resolveOracleDSN("Bio::Graphics::Browser2::DbUtils", $dbiString);
+            # attempt to resolve the Oracle TNS name into a connection string DBI understands
+            $dbiString = resolveOracleDSN("Bio::Graphics::Browser2::DbUtils", $dbiString);
         }
         else {
-          print STDERR "WARNING: Found Oracle DSN but cannot find tnsping utility; if your ".
-            "connection string contains a TNS name, it may not be properly resolved.\n";
+            print STDERR "WARNING: Found Oracle DSN but cannot find tnsping utility; if your ".
+                "connection string contains a TNS name, it may not be properly resolved.\n";
         }
     }
     elsif ($dbType eq "postgres") {
@@ -60,7 +60,7 @@ sub new {
 
 sub parseXml {
     my $configFile = $_[0];
-    print STDERR "Parsing $configFile\n";
+    #print STDERR "Parsing $configFile\n";
     unless (-e $configFile) {
         die "Config file does not exist.  Looking for $configFile\n";
     }
@@ -69,7 +69,7 @@ sub parseXml {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseStandardConfig {
-    print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
+    #print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
     my $modelConf = parseXml($STANDARD_CONFIG_FILE);
     my $cfg = $modelConf->{'userDb'}[0];
     return (
@@ -84,7 +84,7 @@ sub parseStandardConfig {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseCustomConfig {
-    print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
+    #print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
     my $cfg = parseXml($CUSTOM_CONFIG_FILE);
     return (
         $cfg->{'dbType'}[0],
