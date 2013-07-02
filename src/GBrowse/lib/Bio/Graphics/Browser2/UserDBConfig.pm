@@ -13,9 +13,6 @@ my $DEFAULT_SCHEMA_NAME = "gbrowseUsers";
 sub new {
     my $class = shift;
 
-    my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
-    my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
-
     my ($dbType, $jdbcString, $username, $password, $schema, $perfLogOn) =
         $USE_CUSTOM_CONFIG_FILE ? parseCustomConfig() : parseStandardConfig();
 
@@ -70,8 +67,9 @@ sub parseXml {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseStandardConfig {
-    #print STDERR "Inside standard, using $STANDARD_CONFIG_FILE\n";
-    my $modelConf = parseXml($STANDARD_CONFIG_FILE);
+    my $configFile = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
+    #print STDERR "Inside standard, using $configFile\n";
+    my $modelConf = parseXml($configFile);
     my $cfg = $modelConf->{'userDb'}[0];
     return (
         $cfg->{'platform'},
@@ -85,8 +83,9 @@ sub parseStandardConfig {
 
 # must return, in order: $dbType, $connectionDsn, $username, $password, $schema, $loggingOn
 sub parseCustomConfig {
-    #print STDERR "Inside custom, using $CUSTOM_CONFIG_FILE\n";
-    my $cfg = parseXml($CUSTOM_CONFIG_FILE);
+    my $configFile = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
+    #print STDERR "Inside custom, using $configFile\n";
+    my $cfg = parseXml($configFile);
     return (
         $cfg->{'dbType'}[0],
         $cfg->{'connectionDsn'}[0],
