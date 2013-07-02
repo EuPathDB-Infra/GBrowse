@@ -7,13 +7,14 @@ use File::Basename;
 use Data::Dumper;
 use Bio::Graphics::Browser2::DbUtils qw(resolveOracleDSN jdbc2oracleDbi jdbc2postgresDbi);
 
-my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
-my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
 my $USE_CUSTOM_CONFIG_FILE = 0;
 my $DEFAULT_SCHEMA_NAME = "gbrowseUsers";
 
 sub new {
     my $class = shift;
+
+    my $STANDARD_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/model-config.xml";
+    my $CUSTOM_CONFIG_FILE = "$ENV{GUS_HOME}/config/$ENV{PROJECT_ID}/gb-userdb-config.xml";
 
     my ($dbType, $jdbcString, $username, $password, $schema, $perfLogOn) =
         $USE_CUSTOM_CONFIG_FILE ? parseCustomConfig() : parseStandardConfig();
