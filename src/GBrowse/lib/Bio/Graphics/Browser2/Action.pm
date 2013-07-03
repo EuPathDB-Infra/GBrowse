@@ -842,12 +842,9 @@ sub ACTION_upload_file {
 	($result,$msg,$tracks,$pid) = (1,'shared track added to your session',$t,$$);
     }
     else {
-	($result, $msg, $tracks, $pid) = $url ?
-	  $usertracks->upload_url($url) :
-	  #$usertracks->mirror_url($track_name, $url, 1,$self->render) :
-        $data ? 
-          $usertracks->upload_data($track_name, $data, $content_type, 1) :
-          $usertracks->upload_file($track_name, $fh, $content_type, $overwrite);
+	($result, $msg, $tracks, $pid) = $url  ? $usertracks->mirror_url($track_name, $url, 1,$self->render)
+                                        :$data ? $usertracks->upload_data($track_name, $data, $content_type, 1)
+                                               : $usertracks->upload_file($track_name, $fh, $content_type, $overwrite);
     }
 
     delete $self->state->{uploads}{$upload_id};
