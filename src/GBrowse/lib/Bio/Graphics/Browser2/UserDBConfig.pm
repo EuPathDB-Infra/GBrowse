@@ -17,8 +17,10 @@ sub new {
         $USE_CUSTOM_CONFIG_FILE ? parseCustomConfig() : parseStandardConfig();
 
     # check DB type
-    $dbType = lc($dbType ||= "oracle"); # default to Oracle
-    
+    $dbType = lc($dbType);
+    $dbType = $dbType ||= "oracle";                             # default to Oracle
+    $dbType = ($dbType eq "postgresql" ? "postgres" : $dbType); # allow multiple values for postgres
+
     # convert connection string (JDBC value) to DBI value
     my $dbiString;
     
