@@ -13,6 +13,12 @@ umask 0;
 my $fcgi    = Bio::Graphics::Browser2::Render->fcgi_request;
 my $init;
 
+my $globals = Bio::Graphics::Browser2->open_globals;
+
+my $requestId = int(rand(100000));
+my $before = Time::HiRes::time();
+print STDERR "TIMETEST::Begin CGI_Main_$requestId $before\n" if $globals->getUserDbConfig->perfLogOn;
+
 if ($fcgi) {
     my $FCGI_DONE = 0;
     $SIG{USR1} = $SIG{PIPE} = $SIG{TERM} = sub {
@@ -27,7 +33,6 @@ if ($fcgi) {
 	my $status = $fcgi->Accept;
 	next unless $status >= 0;
         %ENV = (%sys_env, %ENV);
-	my $globals = Bio::Graphics::Browser2->open_globals;
 	CGI->initialize_globals();
 	my $render = Bio::Graphics::Browser2::Render::HTML->new($globals);
 	eval {
@@ -43,8 +48,11 @@ if ($fcgi) {
 
 } else {
     $SIG{TERM} = sub { warn "gbrowse going down..."; CORE::exit 0 };
-    my $globals = Bio::Graphics::Browser2->open_globals;
     Bio::Graphics::Browser2::Render::HTML->new($globals)->run();
 }
+
+my $after = Time::HiRes::time();
+my $diffTime = $after - $before;
+print STDERR "TIMETEST::End CGI_Main_$requestId $before to $after = $diffTime\n" if $globals->getUserDbConfig->perfLogOn;
 
 exit 0;

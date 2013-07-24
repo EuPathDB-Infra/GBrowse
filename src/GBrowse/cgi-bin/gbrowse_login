@@ -3,9 +3,6 @@
 eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
     if 0; # not running under some shell
 
-eval 'exec /usr/bin/perl -w -S $0 ${1+"$@"}'
-    if 0; # not running under some shell
-
 use strict;
 use Bio::Graphics::Browser2::UserDB;
 use Bio::Graphics::Browser2::Render;
@@ -90,8 +87,18 @@ sub run {
     }
 
     print header();
-
+    
+    my $globals = Bio::Graphics::Browser2->open_globals;
+    my $requestId = int(rand(100000));
+    my $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin GBrowse_Login_$requestId $before\n" if $globals->getUserDbConfig->perfLogOn;
+    
     $userdb->do_validate		($user, $pass, $remember)			if $actions{validate};
+    
+    my $after = Time::HiRes::time();
+    my $diffTime = $endTime - $startTime;
+    print STDERR "TIMETEST::End GBrowse_Login_$requestId $before to $after = $diffTime\n" if $globals->getUserDbConfig->perfLogOn;
+    
     $userdb->do_add_user_check		($user, $email, $fullname, $pass, $sessionid)	if $actions{add_user_check};
     $userdb->do_add_user		($user, $email, $fullname, $pass, $sessionid)	if $actions{add_user};
     $userdb->do_edit_confirmation	($email, $option)				if $actions{edit_confirmation};

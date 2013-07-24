@@ -841,26 +841,27 @@ var GBrowseController = Class.create({
     },
 
     plugin_authenticate:
-    function(configuration_form,message_area) {
-	message_area.innerHTML='<img src="'+this.button_url('spinner.gif')+'" />'+Controller.translate('WORKING');
-	this.reconfigure_plugin('Configure',null,null,'authorizer',configuration_form,true);
-	var remember = $('authenticate_remember_me').getValue() == 'on';
-	new Ajax.Request(Controller.url, {
-                method:     'post',
-	        parameters: {
-		    action:  'plugin_authenticate'
-		},
-		onSuccess: function (t) {
-		    var results    = t.responseJSON;
-		    if (results.userOK) {
-			Balloon.prototype.hideTooltip(1);
-			// the definition for this call is in login.js
-			login_get_account(results.username,results.sessionid,remember,false);
-		    }
-		    else
-			message_area.innerHTML='<div style="color:red">'+results.message+'</div>';
-		}
-	});
+    function(configuration_form,message_area,ajax_base_url,redirectUrl,cookieMaxAge) {
+        Element.extend(configuration_form);
+        var remember = $('authenticate_remember_me').getValue() == 'on';
+        new Ajax.Request(ajax_base_url, {
+            method:     'post',
+            parameters: configuration_form.serialize() +"&"+ $H({
+                          action:  'plugin_authenticate'
+                        }).toQueryString(),
+            onSuccess: function (t) {
+                var results    = t.responseJSON;
+                if (results.userOK) {
+                    // update progressbar, and again in 1/2 second
+                    GB.updateProgress(60, 0);
+                    GB.updateProgress(75, 500);
+                    // the definition for this call is in login.js
+                    login_get_account(results.username,results.sessionid,remember,false,ajax_base_url,redirectUrl,cookieMaxAge);
+                }
+                else
+                    message_area.innerHTML='<div style="color:red">'+results.message+'</div>';
+                }
+            });
     },
 
     plugin_go:

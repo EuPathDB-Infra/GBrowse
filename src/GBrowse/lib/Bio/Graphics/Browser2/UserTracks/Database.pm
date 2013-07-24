@@ -12,18 +12,25 @@ use CGI qw(param url header());
 use Carp qw(confess cluck);
 use File::Path qw(rmtree);
 
+my $DB_SCHEMA;
+
 sub _new {
     my $class = shift;
     my $self  = $class->SUPER::_new(@_);
     
     # Attempt to login to the database or die, and access the necessary tables or create them.
     my $globals     = $self->globals;
-    my $credentials = $globals->user_account_db or warn "No credentials given to uploads DB in GBrowse.conf";
-    my $uploadsdb   = DBI->connect($credentials);
+
+    $DB_SCHEMA = $globals->getUserDbConfig->getSchema;
+    my $connectionString = $globals->getUserDbConfig->getDbiString;
+    my $username = $globals->getUserDbConfig->getUsername;
+    my $password = $globals->getUserDbConfig->getPassword;
+    
+    my $uploadsdb   = DBI->connect($connectionString, $username, $password);
     unless ($uploadsdb) {
         print header();
-        print "Error: Could not open use account database.";
-        die "Could not open user account database with $credentials";
+        print "Error: Could not open use account database using string: $connectionString\n";
+        die "Could not open user account database with $connectionString";
     }
     $self->uploadsdb($uploadsdb);
     
@@ -77,15 +84,15 @@ sub get_file_id {
     my $data_source = $self->{data_source};
     
     # First, check my files.
-    my $uploads = $uploadsdb->selectrow_array("SELECT trackid FROM uploads WHERE path = ? AND userid = ? AND data_source = ?", undef, $filename, $userid, $data_source);
+    my $uploads = $uploadsdb->selectrow_array("SELECT trackid FROM ${DB_SCHEMA}uploads WHERE path = ? AND userid = ? AND data_source = ?", undef, $filename, $userid, $data_source);
     return $uploads if $uploads;
     
     # Then, check files shared with me.
-    my $shared = $uploadsdb->selectrow_array("SELECT DISTINCT uploads.trackid FROM uploads LEFT JOIN sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND uploads.path = ? AND (uploads.sharing_policy = ? OR uploads.sharing_policy = ?) AND data_source = ?", undef, $userid, $filename, "casual", "group", $data_source);
+    my $shared = $uploadsdb->selectrow_array("SELECT DISTINCT uploads.trackid FROM ${DB_SCHEMA}uploads LEFT JOIN ${DB_SCHEMA}sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND uploads.path = ? AND (uploads.sharing_policy = ? OR uploads.sharing_policy = ?) AND data_source = ?", undef, $userid, $filename, "casual", "group", $data_source);
     return $shared if $shared;
     
     # Lastly, check public files.
-    my $public = $uploadsdb->selectrow_array("SELECT trackid FROM uploads WHERE path = ? AND sharing_policy = ? AND data_source = ?", undef, $filename, "public", $data_source);
+    my $public = $uploadsdb->selectrow_array("SELECT trackid FROM ${DB_SCHEMA}uploads WHERE path = ? AND sharing_policy = ? AND data_source = ?", undef, $filename, "public", $data_source);
     return $public if $public;
 }
 
@@ -100,7 +107,7 @@ sub filename {
 sub nowfun {
     my $self = shift;
     my $globals = $self->{globals};
-    return $globals->user_account_db =~ /sqlite/i ? "datetime('now','localtime')" : 'now()';
+    return $globals->getUserDbConfig->isOracle ? '(select CURRENT_DATE from dual)' : 'now()';
 }
 
 # Get Uploaded Files () - Returns an array of the paths of files owned by the currently logged-in user. Can be publicly accessed.
@@ -109,7 +116,7 @@ sub get_uploaded_files {
     my $userid = $self->{userid};
     my $uploadsdb   = $self->{uploadsdb};
     my $data_source = $self->{data_source};
-    my $rows = $uploadsdb->selectcol_arrayref("SELECT trackid FROM uploads WHERE userid = ? AND sharing_policy <> ? AND imported <> 1 AND data_source=? ORDER BY trackid", undef, $userid, "public", $data_source);
+    my $rows = $uploadsdb->selectcol_arrayref("SELECT trackid FROM ${DB_SCHEMA}uploads WHERE userid = ? AND sharing_policy <> ? AND imported <> 1 AND data_source=? ORDER BY trackid", undef, $userid, "public", $data_source);
     return @$rows;
 }
 
@@ -170,24 +177,43 @@ sub get_public_files {
     
     # Basic selection statement, limit to public tracks from this data set.
     my $ds = $uploadsdb->quote($data_source);
+    
+    # For Oracle conversion must convert $count and $offset to rownum values
+    $offset = ($offset ? $offset : 0);
+    my $rownumStart = $offset + 1;
+    my $rownumEnd = $rownumStart + $count;
+
     my $sql =<<END;
-SELECT u.trackid FROM uploads u
+SELECT u.trackid FROM ${DB_SCHEMA}uploads u
  WHERE u.sharing_policy='public'
    AND u.data_source=$ds
 END
 ;
-    $sql .=  "AND u.trackid NOT IN (SELECT trackid FROM sharing WHERE userid=$userid)"
+    $sql .=  "AND u.trackid NOT IN (SELECT trackid FROM ${DB_SCHEMA}sharing WHERE userid=$userid)"
 	if $userid;
     
     # Search string - if we have a searched ID, use that as the userid. If not, match the searchterm to description, path or title.
     $sql .= $search_id? " AND (u.userid = "       . $uploadsdb->quote($search_id) . ")"
                       : " AND (description LIKE " . $uploadsdb->quote("%".$searchterm."%")
                       . " OR path LIKE "          . $uploadsdb->quote("%".$searchterm."%")
-                      . " OR title LIKE "         . $uploadsdb->quote("%".$searchterm."%") . ")" if $searchterm;
-    
-    # Limit & offset as needed... 
-    $sql .= " ORDER BY public_count DESC LIMIT $count";
-    $sql .= " OFFSET $offset" if $offset;
+                      . " OR title LIKE "         . $uploadsdb->quote("%".$searchterm."%") . ")" if $searchterm;    
+
+    # Order results
+    $sql .= " ORDER BY public_count DESC";
+
+    if ($globals->getUserDbConfig->isOracle) {
+        # Wrap query with rownum constraints
+        $sql = "SELECT trackid"
+              ." FROM ("
+              ."   SELECT a.trackid, rownum rnum"
+              ."   FROM ( $sql ) a"
+              ."   WHERE rownum < $rownumEnd )"
+              ." WHERE rnum >= $rownumStart";
+    } else { # postgres
+    	# Add count and limit constraints
+    	$sql .= " LIMIT $count";
+        $sql .= " OFFSET $offset" if $offset;
+    }
 
     my $rows = $uploadsdb->selectcol_arrayref($sql);
     return @$rows;
@@ -209,9 +235,9 @@ sub public_count {
         $search_id = $userdb->get_user_id($searchterm);
     }
     
-    my $sql = "SELECT u.trackid FROM uploads u"
-            . " LEFT JOIN (SELECT s.trackid FROM sharing s WHERE s.userid = " . $uploadsdb->quote($userid) . ") s"
-            . " USING(trackid) WHERE s.trackid IS NULL"
+    my $sql = "SELECT u.trackid FROM ${DB_SCHEMA}uploads u"
+            . " LEFT JOIN (SELECT s.trackid FROM ${DB_SCHEMA}sharing s WHERE s.userid = " . $uploadsdb->quote($userid) . ") s"
+            . " ON u.trackid = s.trackid WHERE s.trackid IS NULL"
             . " AND sharing_policy = " . $uploadsdb->quote("public")
             . " AND data_source = " . $uploadsdb->quote($data_source);
     
@@ -230,7 +256,7 @@ sub get_imported_files {
     my $userid = $self->{userid};
     my $uploadsdb = $self->{uploadsdb};
     my $data_source = $self->{data_source};
-    my $rows = $uploadsdb->selectcol_arrayref("SELECT trackid FROM uploads WHERE sharing_policy <> 'public' AND imported = 1 AND data_source = ? AND userid = ? ORDER BY trackid", undef, $data_source, $userid);
+    my $rows = $uploadsdb->selectcol_arrayref("SELECT trackid FROM ${DB_SCHEMA}uploads WHERE sharing_policy <> 'public' AND imported = 1 AND data_source = ? AND userid = ? ORDER BY trackid", undef, $data_source, $userid);
     return @$rows;
 }
 
@@ -240,7 +266,7 @@ sub get_added_public_files {
     my $userid = $self->{userid};
     my $uploadsdb = $self->{uploadsdb};
     my $data_source = $self->{data_source};
-    my $sql = "SELECT DISTINCT uploads.trackid FROM uploads LEFT JOIN sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND uploads.sharing_policy = ? AND sharing.public = 1 AND uploads.data_source = ?";
+    my $sql = "SELECT DISTINCT uploads.trackid FROM ${DB_SCHEMA}uploads LEFT JOIN ${DB_SCHEMA}sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND uploads.sharing_policy = ? AND sharing.is_public = 1 AND uploads.data_source = ?";
     my $rows = $uploadsdb->selectcol_arrayref($sql, undef, $userid, "public", $data_source);
     return @$rows;
 }
@@ -251,14 +277,14 @@ sub match_uploads {
 
     my $sql =<<END;
 SELECT a.title
-  FROM uploads as a,sharing as b
+  FROM ${DB_SCHEMA}uploads as a, ${DB_SCHEMA}sharing as b
  WHERE a.userid=b.userid
    AND a.sharing_policy='public'
    AND a.title LIKE ?
 END
     ;
     my $userid    = $self->{userid};
-    $sql .=  "AND a.trackid NOT IN (SELECT trackid FROM sharing WHERE userid=$userid)"
+    $sql .=  "AND a.trackid NOT IN (SELECT trackid FROM ${DB_SCHEMA}sharing WHERE userid=$userid)"
 	if $userid;
 
     my $uploadsdb = $self->{uploadsdb};
@@ -286,7 +312,7 @@ sub get_shared_files {
     my $uploadsdb = $self->{uploadsdb};
     my $data_source = $self->{data_source};
     #Since upload IDs are all the same size, we don't have to worry about one ID repeated inside another so this next line is OK. Still, might be a good idea to secure this somehow?
-    my $rows = $uploadsdb->selectcol_arrayref("SELECT DISTINCT uploads.trackid FROM uploads LEFT JOIN sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND sharing.public = 0 AND (uploads.sharing_policy = ? OR uploads.sharing_policy = ?) AND uploads.userid <> ? AND uploads.data_source = ? ORDER BY uploads.trackid", undef, $userid, "group", "casual", $userid, $data_source);
+    my $rows = $uploadsdb->selectcol_arrayref("SELECT DISTINCT uploads.trackid FROM ${DB_SCHEMA}uploads LEFT JOIN ${DB_SCHEMA}sharing ON uploads.trackid = sharing.trackid WHERE sharing.userid = ? AND sharing.is_public = 0 AND (uploads.sharing_policy = ? OR uploads.sharing_policy = ?) AND uploads.userid <> ? AND uploads.data_source = ? ORDER BY uploads.trackid", undef, $userid, "group", "casual", $userid, $data_source);
     return @$rows;
 }
 
@@ -332,7 +358,7 @@ sub share {
         my $uploadsdb = $self->{uploadsdb};
 
         # Get the current users.
-        return if $uploadsdb->selectrow_array("SELECT trackid FROM sharing WHERE trackid = ? AND userid = ? AND public = ?", 
+        return if $uploadsdb->selectrow_array("SELECT trackid FROM ${DB_SCHEMA}sharing WHERE trackid = ? AND userid = ? AND is_public = ?", 
 					      undef, $file, $userid, $public_flag);
 
         # Add the file's tracks to the track lookup hash.
@@ -343,7 +369,7 @@ sub share {
 	    $self->email_sharee($file,$userid);
 	}
 	    
-        return $uploadsdb->do("INSERT INTO sharing (trackid, userid, public) VALUES (?, ?, ?)", 
+        return $uploadsdb->do("INSERT INTO ${DB_SCHEMA}sharing (trackid, userid, is_public) VALUES (?, ?, ?)", 
 			      undef, $file, $userid, $public_flag);
     } else {
         warn "Share() attempted in an illegal situation on a $sharing_policy file ($file) by user #$userid, a non-owner.";
@@ -366,7 +392,7 @@ sub unshare {
         my $uploadsdb = $self->{uploadsdb};
         
         # Get the current users.
-        return unless $uploadsdb->selectrow_array("SELECT trackid FROM sharing WHERE trackid = ? AND userid = ? AND public = ?", 
+        return unless $uploadsdb->selectrow_array("SELECT trackid FROM ${DB_SCHEMA}sharing WHERE trackid = ? AND userid = ? AND is_public = ?", 
 						  undef, 
 						  $file, $userid, $public_flag);
 
@@ -376,7 +402,7 @@ sub unshare {
         	delete $track_lookup{$_} foreach $self->labels($file);;
 	    }
 	    
-	    return $uploadsdb->do("DELETE FROM sharing WHERE trackid = ? AND userid = ? AND public = ?", undef, $file, $userid, $public_flag);
+	    return $uploadsdb->do("DELETE FROM ${DB_SCHEMA}sharing WHERE trackid = ? AND userid = ? AND is_public = ?", undef, $file, $userid, $public_flag);
     } else {
         warn "Unshare() attempted in an illegal situation on a $sharing_policy file ($file) by user #$userid, a non-owner.";
     }
@@ -437,11 +463,11 @@ sub field {
         #Clean up the string
         $value =~ s/^\s+//;
         $value =~ s/\s+$//; 
-        my $result = $uploadsdb->do("UPDATE uploads SET $field = ? WHERE trackid = ?", undef, $value, $file);
+        my $result = $uploadsdb->do("UPDATE ${DB_SCHEMA}uploads SET $field = ? WHERE trackid = ?", undef, $value, $file);
         $self->update_modified($file);
         return $result;
     } else {
-        return $uploadsdb->selectrow_array("SELECT $field FROM uploads WHERE trackid = ?", undef, $file);
+        return $uploadsdb->selectrow_array("SELECT $field FROM ${DB_SCHEMA}uploads WHERE trackid = ?", undef, $file);
     }
 }
 
@@ -452,7 +478,7 @@ sub update_modified {
     my $file = shift or return;
     my $now = $self->nowfun;
     # Do not swap out this line for a field() call, since it's used inside field().
-    return $uploadsdb->do("UPDATE uploads SET modification_date = $now WHERE trackid = " . $uploadsdb->quote($file));
+    return $uploadsdb->do("UPDATE ${DB_SCHEMA}uploads SET modification_date = $now WHERE trackid = " . $uploadsdb->quote($file));
 }
 
 # Created (File ID) - Returns creation date of $file, cannot be set.
@@ -524,8 +550,8 @@ sub add_file {
     
     my $fileid = md5_hex($userid.$filename.$data_source);
     my $now = $self->nowfun;
-    my $result = $uploadsdb->do("DELETE FROM uploads WHERE trackid='$fileid'");
-    $uploadsdb->do("INSERT INTO uploads (trackid, userid, path, description, imported, creation_date, modification_date, sharing_policy, data_source ) VALUES (?, ?, ?, ?, ?, $now, $now, ?, ?)", undef, $fileid, $userid, $filename, $description, $imported, $shared, $data_source);
+    my $result = $uploadsdb->do("DELETE FROM ${DB_SCHEMA}uploads WHERE trackid='$fileid'");
+    $uploadsdb->do("INSERT INTO ${DB_SCHEMA}uploads (trackid, userid, path, description, imported, creation_date, modification_date, sharing_policy, data_source ) VALUES (?, ?, ?, ?, ?, $now, $now, ?, ?)", undef, $fileid, $userid, $filename, $description, $imported, $shared, $data_source);
     return $fileid;
 }
 
@@ -546,8 +572,8 @@ sub delete_file {
         
             # First delete from the database - better to have a dangling file then a dangling reference to nothing.
             my $uploadsdb = $self->{uploadsdb};
-            $uploadsdb->do("DELETE FROM uploads WHERE trackid = ?", undef, $file);
-            $uploadsdb->do("DELETE FROM sharing WHERE trackid = ?", undef, $file);
+            $uploadsdb->do("DELETE FROM ${DB_SCHEMA}uploads WHERE trackid = ?", undef, $file);
+            $uploadsdb->do("DELETE FROM ${DB_SCHEMA}sharing WHERE trackid = ?", undef, $file);
             
             # Remove the file's tracks from the track lookup hash.
             my %track_lookup = $self->track_lookup;
@@ -623,7 +649,7 @@ sub is_shared_with_me {
     my $file = shift or return 0;
     my $userid = $self->{userid};
     my $uploadsdb = $self->{uploadsdb};
-    my $results = $uploadsdb->selectcol_arrayref("SELECT trackid FROM sharing WHERE trackid = ? AND userid = ?", undef, $file, $userid);
+    my $results = $uploadsdb->selectcol_arrayref("SELECT trackid FROM ${DB_SCHEMA}sharing WHERE trackid = ? AND userid = ?", undef, $file, $userid);
     return (@$results > 0);
 }
 
@@ -659,7 +685,7 @@ sub get_users {
     my $file = shift;
     my $public = shift;
     my $uploadsdb = $self->{uploadsdb};
-    my $usersref = $uploadsdb->selectcol_arrayref("SELECT userid FROM sharing WHERE trackid = ? AND public = ? ORDER BY userid", undef, $file, $public);
+    my $usersref = $uploadsdb->selectcol_arrayref("SELECT userid FROM ${DB_SCHEMA}sharing WHERE trackid = ? AND is_public = ? ORDER BY userid", undef, $file, $public);
     return @$usersref;
 }
 
