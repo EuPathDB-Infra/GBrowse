@@ -771,7 +771,16 @@ sub ACTION_authorize_login {
     my $openid   = $q->param('openid');   # or croak;
     my $remember = $q->param('remember'); # or croak;
 
+    my $globals = $self->render->globals;
+    my $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin ACTION_authorize_login $before with $username, $session\n" if $globals->getUserDbConfig->perfLogOn;
+
     my ($sessionid,$nonce) = $self->render->authorize_user($username, $session, $remember, $openid);
+
+    my $after = Time::HiRes::time();
+    my $diffTime = $after - $before;
+    print STDERR "TIMETEST::End ACTION_authorize_login $before to $after = $diffTime\n" if $globals->getUserDbConfig->perfLogOn;
+
     $sessionid or return(403,'application/txt','unknown user');
     $self->session->flush;
     return (200,'application/json',{id=>$sessionid,authority=>$nonce});
@@ -1301,9 +1310,23 @@ sub ACTION_plugin_authenticate {
     $render->init_plugins();
     my $plugin = eval{$render->plugins->auth_plugin} 
        or return (204,'text/plain','no authenticator defined');
-
+    $self->session->flush;
+    
+    my ($user,$password) = $plugin->credentials;
     my $result;
+    my $globals = $self->render->globals;
+    my $perfLogOn = $globals->getUserDbConfig->perfLogOn;
+    my $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin ACTION_plugin_authenticate:plugin $before\n" if $perfLogOn;
+    
     if (my ($username,$fullname,$email)  = $plugin->authenticate) {
+	
+    my $after = Time::HiRes::time();
+    my $diffTime = $after - $before;
+    print STDERR "TIMETEST::End ACTION_plugin_authenticate:plugin $before to $after = $diffTime\n" if $perfLogOn;
+    $before = Time::HiRes::time();
+    print STDERR "TIMETEST::Begin ACTION_plugin_authenticate:other $before\n" if $perfLogOn;
+
 	my $session   = $self->session;
 	$session->unlock;
 	my $userdb = $render->userdb;
@@ -1320,6 +1343,10 @@ sub ACTION_plugin_authenticate {
 	    $result = { userOK    => 0,
 			message   => 'You are not authorized to access this data source.'};
 	}
+
+    $after = Time::HiRes::time();
+    $diffTime = $after - $before;
+    print STDERR "TIMETEST::End ACTION_plugin_authenticate:other $before to $after = $diffTime\n" if $perfLogOn;
     } 
     # failed to authenticate
     else {

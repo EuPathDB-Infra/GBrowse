@@ -15,12 +15,13 @@ use Text::ParseWords 'shellwords';
 use File::Path 'mkpath';
 use Bio::Graphics::Browser2::DataSource;
 use Bio::Graphics::Browser2::Session;
+use Bio::Graphics::Browser2::UserDBConfig;
 use GBrowse::ConfigData;
 use Carp qw(croak carp confess cluck);
 
 use constant DEFAULT_MASTER => 'GBrowse.conf';
 
-my (%CONFIG_CACHE,$HAS_DBFILE,$HAS_STORABLE);
+my (%CONFIG_CACHE,$HAS_DBFILE,$HAS_STORABLE,$USER_DB_CONFIG);
 
 # Open a globals object with a config file in the standard location.
 sub open_globals {
@@ -55,8 +56,14 @@ sub new {
 
   $CONFIG_CACHE{$config_file_path}{object} = $self;
   $CONFIG_CACHE{$config_file_path}{mtime}  = $mtime;
+  
+  # gather UserDB information from different config file and override accessors below
+  $USER_DB_CONFIG = Bio::Graphics::Browser2::UserDBConfig->new;
+
   return $self;
 }
+
+sub getUserDbConfig { $USER_DB_CONFIG; }
 
 ## methods for dealing with paths
 sub resolve_path {
@@ -118,9 +125,7 @@ sub db_base        {
     return $base || File::Spec->catfile(shift->persistent_base,'databases');
 }
 sub userdata_base  { 
-    my $self = shift;
-    my $base = $self->setting(general=>'userdata_base');
-    return $base ||  File::Spec->catfile($self->persistent_base,'userdata');
+    return "/var/www/Common/gbrowse_data".$ENV{'CONTEXT_PATH'}."/userdata";
 }
 
 # these are url-relative options
