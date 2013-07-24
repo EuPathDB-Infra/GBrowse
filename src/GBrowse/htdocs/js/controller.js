@@ -841,7 +841,7 @@ var GBrowseController = Class.create({
     },
 
     plugin_authenticate:
-    function(configuration_form,message_area,ajax_base_url,redirectUrl) {
+    function(configuration_form,message_area,ajax_base_url,redirectUrl,cookieMaxAge) {
         Element.extend(configuration_form);
         var remember = $('authenticate_remember_me').getValue() == 'on';
         new Ajax.Request(ajax_base_url, {
@@ -856,7 +856,7 @@ var GBrowseController = Class.create({
                     GB.updateProgress(60, 0);
                     GB.updateProgress(75, 500);
                     // the definition for this call is in login.js
-                    login_get_account(results.username,results.sessionid,remember,false,ajax_base_url,redirectUrl);
+                    login_get_account(results.username,results.sessionid,remember,false,ajax_base_url,redirectUrl,cookieMaxAge);
                 }
                 else
                     message_area.innerHTML='<div style="color:red">'+results.message+'</div>';

@@ -6,6 +6,7 @@ use warnings;
 use JSON;
 use Digest::MD5 'md5_hex';
 use CGI qw(:standard param request_method header url iframe img span div br center url_param);
+use CGI::Cookie qw();
 use Carp qw(croak cluck);
 use File::Basename 'dirname','basename';
 use Text::Tabs;
@@ -358,7 +359,13 @@ sub run_asynchronous_event {
     warn "[$$] asynchronous event returning status=$status, mime-type=$mime_type" if TRACE_RUN;
 
     # add the cookies!
-    $headers{-cookie} = [$self->state_cookie,$self->auth_cookie];
+    my %cookies = CGI::Cookie->fetch;
+    my $oldSessionCookie = $cookies{'gbrowse2_sess'};
+    my $newSessionCookie = $self->state_cookie;
+    if (!(defined $oldSessionCookie) || $oldSessionCookie->value ne $newSessionCookie->value) {
+        # then reset; otherwise do not replace existing cookies!
+        $headers{-cookie} = [$newSessionCookie,$self->auth_cookie];
+    }
 
     if ($status == 204) { # no content
 		print CGI::header( -status => '204 No Content', %headers );
@@ -749,11 +756,23 @@ sub render_header {
   my $self    = shift;
   my $cookie1 = $self->state_cookie();
   my $cookie2 = $self->auth_cookie();
-  my $header = CGI::header(
+  
+  # check existing cookies and do not replace if same session
+  my %cookies = CGI::Cookie->fetch;
+  my $sessionCookie = $cookies{'gbrowse2_sess'};
+  my $header;
+  if (!(defined $sessionCookie) || $sessionCookie->value ne $cookie1->value) {
+    $header = CGI::header(
       -cache_control =>'no-cache',
       -cookie  => [$cookie1,$cookie2],
       -charset => $self->translate('CHARSET'),
-  );
+    );
+  } else {
+    $header = CGI::header(
+      -cache_control =>'no-cache',
+      -charset => $self->translate('CHARSET'),
+    );
+  }
   print $header;
 }
 

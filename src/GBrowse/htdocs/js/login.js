@@ -713,7 +713,7 @@ function login_user(username,session,remember) {
 }
 
 //Refresh the page with the user logged in
-function login_get_account(username,session,remember,openid,ajax_url_base,redirectUrl) {
+function login_get_account(username,session,remember,openid,ajax_url_base,redirectUrl,cookieMaxAge) {
     if ($('loginBusy') != null) $('loginBusy').show();
     new Ajax.Request(ajax_url_base,{
         method:      'post',
@@ -740,8 +740,12 @@ function login_get_account(username,session,remember,openid,ajax_url_base,redire
                     GB.updateProgress(95, 0);
 
                     // set gbrowse cookies explicitly instead of getting them from gbrowse response
-                    jQuery.cookies.set('gbrowse2_sess', results.id, {path: '/cgi-bin/'});
-                    jQuery.cookies.set('authority', results.authority, {path: '/cgi-bin/'});
+                    // maxAge is sent in seconds; only add as option if not session cookie
+                    var maxAgeDate = new Date((new Date()).getTime() + (cookieMaxAge * 1000));
+                    var cookieConfig = (cookieMaxAge == -1) ? { path: '/cgi-bin/' } :
+                          { path: '/cgi-bin/', expiresAt: maxAgeDate };
+                    jQuery.cookies.set('gbrowse2_sess', results.id, cookieConfig);
+                    jQuery.cookies.set('authority', results.authority, cookieConfig);
 
                     window.location = redirectUrl;
                     return;
