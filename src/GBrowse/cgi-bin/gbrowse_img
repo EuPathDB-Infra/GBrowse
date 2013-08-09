@@ -231,7 +231,7 @@ sub render_image {
         my $url    = $renderer->source->generate_image($img_data);
 	my $js = $render->data_source->globals->js_url;
 	my @scripts = map { {src=>"$js/$_"} }
-	                  qw(prototype.js GBox.js balloon.js balloon.config.js);
+	                  qw(prototype.js balloon.js balloon.config.js GBox.js);
 	print $self->header(-type=>'text/html');
 	print start_html(-script=>\@scripts),
 	      $render->render_balloon_settings,
