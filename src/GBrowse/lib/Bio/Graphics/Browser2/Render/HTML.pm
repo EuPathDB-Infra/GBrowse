@@ -1259,7 +1259,10 @@ END
 sub render_custom_track_listing {
 	my $self = shift;
 	my $html = h1($self->translate('UPLOADED_TRACKS'));
-
+	$html .= '<div style="margin:10px;border:1px solid black;border-radius:6px;background-color:#FFE4E1;padding:3px">'.
+	    '<em>Note: Retaining Custom Tracks across user sessions is a new feature.  When you log out, you may not need'.
+	    ' to upload your tracks again.  However, persistence of user tracks is not guaranteed, especially between'.
+	    ' releases.</em></div>';
 	$html .= a( {
 	    -href => $self->annotation_help,
 	    -target => '_blank'
