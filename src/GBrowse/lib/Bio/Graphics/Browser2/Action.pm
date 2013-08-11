@@ -947,7 +947,7 @@ sub ACTION_upload_status {
 	return (200,'text/html', "<b>$file_name:</b> <i>$status</i>");
     } else {
 	my $waiting = $render->translate('PENDING');
-	return (200,'text/html', "<i>$waiting</i>");
+	return (200,'text/html', "<img src='/gbrowse/images/buttons/spinner.gif'/><i>$waiting</i>");
     }
 }
 
