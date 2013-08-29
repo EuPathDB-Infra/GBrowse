@@ -747,7 +747,7 @@ function login_get_account(username,session,remember,openid,ajax_url_base,redire
                     jQuery.cookies.set('gbrowse2_sess', results.id, cookieConfig);
                     jQuery.cookies.set('authority', results.authority, cookieConfig);
 
-                    window.location = redirectUrl;
+                    window.top.location.href = redirectUrl;
                     return;
                 }
             }
