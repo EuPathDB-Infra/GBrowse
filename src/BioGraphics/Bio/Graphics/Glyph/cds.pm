@@ -205,7 +205,10 @@ sub draw {
 
     next if ($self->option('sub_part') && $type ne $self->option('sub_part'));
 
-    next if $ignore_non_cds && lc($type) ne 'cds';
+    # eupathdb 01-13-2014 - type at eupath is "CDS:Annotation" instead of just "CDS"
+    # need to check the gus gbrowse adator to fix this issue
+    #next if $ignore_non_cds && lc($type) ne 'cds';
+    next if $ignore_non_cds && lc($type) !~ /cds:/;
 
     my $pos     = $feature->strand >= 0 ? $feature->start : $feature->end;
     my $phase   = $feature->can('phase') ? $feature->phase  # bioperl uses "frame" but this is incorrect usage
