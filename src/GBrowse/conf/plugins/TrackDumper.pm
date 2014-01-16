@@ -53,10 +53,13 @@ sub configure_form {
 			 ),
 	       '&nbsp; features using GFF version',
 	       popup_menu(-name   => $self->config_name('version'),
-			  -values => [2,2.5,3],
-			  -labels => { 2   => '2',
-                                       2.5 => '2.5*',
-				       3   => '3'},
+				# eupathdb - comments out gff v2 and v2.5 01/16/2014
+			  #-values => [2,2.5,3],
+			  #-labels => { 2   => '2',
+        #                               2.5 => '2.5*',
+				#       3   => '3'},
+			  -values => [3],
+			  -labels => { 3   => '3'},
 			  -default => $current_config->{version},
 			  -override => 1),
   
@@ -143,8 +146,7 @@ sub dump {
   my $thing_to_dump = $segment;
 
   # safest thing to do is to use embedded logic
-=c
-  if ($version == 3 && $config->{print_config}) {
+  #if ($version == 3 && $config->{print_config}) {
       my $dumper = Bio::Graphics::Browser2::TrackDumper->new(
 	  -data_source => $conf,
 	  -id          => $page_settings->{userid},
@@ -154,20 +156,19 @@ sub dump {
 	                  : []
 	  ) or return;
       $dumper->print_datafile();
-  }
-=cut
+      $self->print_gff($thing_to_dump,@more_feature_sets);
+  #}
   #elsif ($config->{print_config}) {
-  if ($config->{print_config}) {
-      Bio::Graphics::Browser2::TrackDumper->print_configuration
-	  ($self->browser_config,
-	   $mode eq 'selected' ? [$self->selected_tracks] : ()
-	  );
-      $self->print_gff($thing_to_dump,@more_feature_sets);
-  }
-
-  else {
-      $self->print_gff($thing_to_dump,@more_feature_sets);
-  }
+  #    Bio::Graphics::Browser2::TrackDumper->print_configuration
+	#  ($self->browser_config,
+	#   $mode eq 'selected' ? [$self->selected_tracks] : ()
+	#  );
+  #    $self->print_gff($thing_to_dump,@more_feature_sets);
+  #}
+  #
+  #else {
+  #    $self->print_gff($thing_to_dump,@more_feature_sets);
+  #}
 
   if ( $embed && !$entire_genome) {
     my $dna = $segment->dna;
