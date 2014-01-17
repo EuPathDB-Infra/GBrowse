@@ -489,6 +489,8 @@ sub print_bigwigs {
 
 sub print_datafile {
     my $self = shift;
+    my $sqlName = shift;
+    my $sqlParam = shift;
 
     my $labels = $self->get_labels;
     my $segment= $self->get_segment;
@@ -512,7 +514,7 @@ sub print_datafile {
         @$labels;
 
     $self->print_gff3_header($segment);
-    $self->print_gff3_data($_, $types, \%filters ) for $self->db;
+    $self->print_gff3_data($_, $types, \%filters, $sqlName, $sqlParam) for $self->db;
     $self->print_gff3_data($_) for @$files;
 }
 
@@ -819,6 +821,8 @@ sub print_gff3_data {
     my $db      = shift;
     my $types   = shift;
     my $filters = shift;
+    my $sqlName = shift;
+    my $sqlParam = shift;
 
     my $s           = $self->get_segment;
     my $data_source = $self->data_source;
@@ -830,6 +834,9 @@ sub print_gff3_data {
         -end    => $s->end
     );
     push @args, ( -type => $types ) if $types;
+    push @args, ( -sqlName => $sqlName) if $sqlName;
+    push @args, ( -sqlParam => $sqlParam) if $sqlParam;
+
     my $iterator = $db->get_seq_stream(@args);
 
 FEATURE:
