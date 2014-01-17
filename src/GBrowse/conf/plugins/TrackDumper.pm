@@ -155,8 +155,12 @@ sub dump {
 	                  ? [$self->selected_tracks] 
 	                  : []
 	  ) or return;
-      $dumper->print_datafile();
-      $self->print_gff($thing_to_dump,@more_feature_sets);
+
+
+    my @sqlName = $self->selected_sqlName;
+    my @sqlParam = $self->selected_sqlParam;
+    $dumper->print_datafile(\@sqlName, \@sqlParam);
+     # $dumper->print_datafile();
   #}
   #elsif ($config->{print_config}) {
   #    Bio::Graphics::Browser2::TrackDumper->print_configuration
@@ -183,7 +187,9 @@ sub print_gff {
     my $config     = $self->configuration;
     my $version    = $config->{version} || 3;
     my $mode       = $config->{mode}    || 'selected';
-    
+  
+
+	warn "### self: $self";
     my $date = localtime;
     print "##gff-version $version\n";
     print "##date $date\n";
