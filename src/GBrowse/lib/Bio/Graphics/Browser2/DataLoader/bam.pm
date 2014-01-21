@@ -53,7 +53,9 @@ height         = 3
 label          = $filename
 category       = $category
 label density = 50
+feature_limit = 500
 bump          = fast
+stranded      = 1
 key           = $filename
 END
 
@@ -100,7 +102,6 @@ END
 sub get_fasta_file {
     my $self = shift;
     my @fasta      = $self->get_fasta_files;
-    warn "FASTA (before filtering) = @fasta";
     my $fasta      = (grep {!/\.fai$/} @fasta)[0];
     return $fasta;
 }
@@ -117,8 +118,6 @@ sub load {
 	mkdir $self->sources_path or die $!;
 	my $source_file = IO::File->new(
 	    File::Spec->catfile($self->sources_path,$self->track_name),'>');
-
-	warn "sourcefile=",File::Spec->catfile($self->sources_path,$self->track_name);
 
 	$self->start_load;
 
@@ -157,18 +156,21 @@ sub finish_load {
     my $dest    = File::Spec->catfile($self->data_path,$self->track_name);
     $dest      =~ s/\.[bs]am$//i; # sorting will add the .bam extension
 
+    # check whether we need to sort or not
+    if ($self->is_sorted($source)) {
+        # bam is already sorted by coordinate, destination will become source
+        $dest = $source;
+    }
+    else {
     $self->set_status('sorting BAM file');
-		# EuPathDB bug fix - https://redmine.apidb.org/issues/9982
-    #Bio::DB::Bam->sort_core(0,$source,$dest);
-    Bio::DB::Bam->sort_core(0,$source,$dest,200*1e6);
-    
-    $self->set_status('indexing BAM file');
+    Bio::DB::Bam->sort_core(0,$source,$dest,250*1e6);
+        $dest .= '.bam';
+    }
 
-    $dest     .= '.bam';
+    $self->set_status('indexing BAM file');
     Bio::DB::Bam->index_build($dest);
 
     my $bigwig_exists = 0;
-
     if ($self->has_bigwig) {
 	$self->set_status('creating BigWig coverage file');
 	$bigwig_exists = $self->create_big_wig();
@@ -183,7 +185,6 @@ sub has_bigwig {
     return $HASBIGWIG if defined $HASBIGWIG;
     my $result = eval "require Bio::DB::Sam::SamToGBrowse;1";
     $result  &&= eval "require Bio::DB::BigWig; 1";
-    warn "hasbigwig = $result";
     return $HASBIGWIG = $result;
 }
 
@@ -192,11 +193,16 @@ sub create_big_wig {
     my $dir    = $self->data_path;
     my $fasta  = $self->get_fasta_file or return;
     my $wigout = Bio::DB::Sam::SamToGBrowse->new($dir,$fasta,0);
-    warn "start bam_to_wig()";
     $wigout->bam_to_wig($self->chrom_sizes);  # this creates the wig files
-    warn "end bam_to_wig";
     die $wigout->last_error if $wigout->last_error;
     1;
+}
+
+sub is_sorted {
+	my $self = shift;
+	my $sam = Bio::DB::Sam->new(-bam => shift, -autoindex => 0);
+	my $header = $sam->bam->header->text;
+	return (split /\n/, $header)[0] =~ /SO:coordinate/i;
 }
 
 1;
