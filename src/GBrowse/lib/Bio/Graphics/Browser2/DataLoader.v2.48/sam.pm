@@ -1,6 +1,6 @@
 package Bio::Graphics::Browser2::DataLoader::sam;
 
-# $Id$
+# $Id: bam.pm 22336 2009-12-07 22:18:43Z lstein $
 
 use strict;
 use base 'Bio::Graphics::Browser2::DataLoader::bam';
@@ -36,7 +36,7 @@ sub finish_load {
 
     # sort it
     $self->set_status('sorting BAM file');
-    Bio::DB::Bam->sort_core(0,$bam,$sorted,250*1e6); # use 200 meg core maximum
+    Bio::DB::Bam->sort_core(0,$bam,$sorted);
 
     # no need to keep sorted and unsorted copies
     rename "$sorted.bam",$bam;
@@ -54,9 +54,6 @@ sub finish_load {
 
     $self->set_status('creating conf file');
     $self->create_conf_file($bam,$bigwig_exists);
-
-    $self->set_status('recompressing source');
-    system ("gzip $source_file");
 }
 
 sub do_strip_prefix {
@@ -84,9 +81,6 @@ sub sam2bam {
     my $tam = Bio::DB::Tam->open($sampath)
 	or die "Could not open SAM file for reading: $!";
 
-    # get chromosome names
-    my $chroms = $self->chromosome_list;
-
     my $header = eval {$tam->header_read};
     unless ($header) {
 	warn "Bio::DB::Sam version 1.20 or greater required for SAM conversion to work properly";
@@ -103,8 +97,6 @@ sub sam2bam {
 	$header = $tam->header_read2($fasta.".fai");
     }
 
-    my $targets = $header->target_name;
-
     my $bam = Bio::DB::Bam->open($bampath,'w')
 	or die "Could not open BAM file for writing: $!";
 
@@ -113,7 +105,6 @@ sub sam2bam {
     my $lines = 0;
 
     while ($tam->read1($header,$alignment) > 0) {
-	next if $chroms && !$chroms->{$targets->[$alignment->tid]};
 	$bam->write1($alignment);
 	$self->set_status("converted $lines lines...") if $lines++%1000 == 0;
     }
