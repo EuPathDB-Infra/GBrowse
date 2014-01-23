@@ -178,13 +178,18 @@ sub generate_chrom_sizes {
     # seq_ids it knows about.
 
   TRY: {
-      my @seqids  = eval {$db->seq_ids}    or last TRY;
+      # euapthdb patches about temporary chrom_sizes file - 01-23-2014 
+      # temporary chrom_sizes file, e.g. /html/gbrowse/tmp/chrom_sizes/tritrypdb.sizes
+      #my @seqids  = eval {$db->seq_ids}    or last TRY;
+      my @seqids  = eval {$db->seq_ids_length}    or last TRY;
       my $result = eval {
 	  for (@seqids) {
-	      my ($segment) = $db->segment($_) or do {
-		warn "Can't find chromosome $_ in default database"; next};
+	      # euapthdb patches - 01-23-2014 
+	      #my ($segment) = $db->segment($_) or do {
+		#warn "Can't find chromosome $_ in default database"; next};
 
-	      print $s "$_\t",$segment->length,"\n";
+	      #print $s "$_\t",$segment->length,"\n";
+        print $s $_->[0], "\t",$_->[1], "\n";
 	  }
 	  close $s;
 	  return 1;
