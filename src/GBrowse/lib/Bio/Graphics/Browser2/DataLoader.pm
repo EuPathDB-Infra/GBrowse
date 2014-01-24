@@ -1,5 +1,5 @@
 package Bio::Graphics::Browser2::DataLoader;
-# $Id$
+# $Id: DataLoader.pm 60104 2014-01-23 19:19:34Z hwang $
 
 use strict;
 use IO::File;
@@ -76,7 +76,6 @@ sub strip_prefix {
 sub set_status {
     my $self   = shift;
     my $msg    = shift;
-
     my $status = $self->status_path;
     open my $fh,">",$status;
     flock($fh,LOCK_EX);
@@ -108,7 +107,7 @@ sub get_fasta_files {
 
     for my $db (@dbs) {
 	my ($dbid,$adaptor,%args) = $source->db2args($db);
-	my $fasta = $args{-fasta} || $args{-dsn};
+	my $fasta = $args{-fasta} || $args{-dsn} || $args{-dir};
 	next if $seenit{$fasta}++;
 	next unless -e $fasta;
 	if (-d _) {
@@ -144,6 +143,20 @@ sub chrom_sizes {
     return $sizes;
 }
 
+sub chromosome_list {
+    my $self  = shift;
+    my $sizes = $self->chrom_sizes or return;
+    open my $fh,$sizes or return;
+    my %result;
+    while (<$fh>) {
+	chomp;
+	my ($c,$s) = split /\s+/;
+	$result{$c} = $s;
+    }
+    close $fh;
+    return \%result;
+}
+
 sub generate_chrom_sizes {
     my $self  = shift;
     my $sizes = shift;
@@ -165,13 +178,18 @@ sub generate_chrom_sizes {
     # seq_ids it knows about.
 
   TRY: {
+      # euapthdb patches about temporary chrom_sizes file - 01-23-2014 
+      # temporary chrom_sizes file, e.g. /html/gbrowse/tmp/chrom_sizes/tritrypdb.sizes
       #my @seqids  = eval {$db->seq_ids}    or last TRY;
       my @seqids  = eval {$db->seq_ids_length}    or last TRY;
       my $result = eval {
 	  for (@seqids) {
-	      #my ($segment) = $db->segment($_) or die "Can't find chromosome $_ in default database";
+	      # euapthdb patches - 01-23-2014 
+	      #my ($segment) = $db->segment($_) or do {
+		#warn "Can't find chromosome $_ in default database"; next};
+
 	      #print $s "$_\t",$segment->length,"\n";
-	      print $s $_->[0], "\t",$_->[1], "\n";
+        print $s $_->[0], "\t",$_->[1], "\n";
 	  }
 	  close $s;
 	  return 1;
