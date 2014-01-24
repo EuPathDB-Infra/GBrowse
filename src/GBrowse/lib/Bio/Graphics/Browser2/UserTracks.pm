@@ -1,6 +1,6 @@
 package Bio::Graphics::Browser2::UserTracks;
 
-# $Id$
+# $Id: UserTracks.pm 60062 2014-01-22 19:10:17Z hwang $
 use strict;
 use Bio::Graphics::Browser2::DataSource;
 use Bio::Graphics::Browser2::DataLoader;
@@ -362,6 +362,9 @@ sub import_url {
     elsif ($url =~ /\.bw$/) {
 		print $f $self->remote_bigwig_conf($file, $url, $key);
     }
+    elsif ($url =~ /\.bb$/) {
+		print $f $self->remote_bigbed_conf($file, $url, $key);
+    }
     else {
 		print $f $self->remote_mirror_conf($file, $url, $key);# Conf Metadata (File) - Returns the modified time and size of a track's configuration file.
     }
@@ -401,7 +404,7 @@ sub mirror_url {
     
     warn "mirroring..." if DEBUG;
 
-    if ($url =~ /\.(bam|bw)$/ or $url =~ /\b(gbgff|das)\b/) {
+    if ($url =~ /\.(bam|bw|bb)$/ or $url =~ /\b(gbgff|das)\b/) {
 		return $self->import_url($url, $overwrite);
     }
 
@@ -501,19 +504,21 @@ sub upload_file {
 
     my $original_name = $file_name;
     $file_name    =~ s/\.(gz|bz2)$//;  # to indicate that it is decompressed
+    $file_name =~ s/\.(tgz|tbz|tbz2)$/.tar/; # change archive extension   
 
     warn "$file_name: OVERWRITE = $overwrite" if DEBUG;
 
     my $filename = $self->trackname_from_url($file_name, !$overwrite);
     
     $content_type ||= '';
-
-    if ($content_type eq 'application/gzip' or $original_name =~ /\.gz$/) {
-		$fh = $self->install_filter($fh,'gunzip -c');
-    } elsif ($content_type eq 'application/bzip2' or $original_name =~ /\.bz2$/) {
-		$fh = $self->install_filter($fh,'bunzip2 -c');
-    }
     
+    if ($original_name =~ /\.sam\.gz/) { # special case compressed sam files - do not uncompress!
+#	$filename = $original_name;
+    } elsif ($content_type eq 'application/gzip' or $original_name =~ /\.(?:tgz|gz)$/) {
+	$fh = $self->install_filter($fh,'gunzip -c');
+    } elsif ($content_type eq 'application/bzip2' or $original_name =~ /\.(?:tbz2?|bz2)$/) {
+	$fh = $self->install_filter($fh,'bunzip2 -c');
+    }
     
     my $fileid = $self->get_file_id($filename) if $self->database;
     my $file   = $self->database ? $fileid ? $fileid : $self->add_file($filename) : $filename;
@@ -526,7 +531,8 @@ sub upload_file {
     my $result = eval {
 		local $SIG{TERM} = sub { die "cancelled" };
 		croak "Could not guess the type of the file $file_name"	unless $type;
-
+		croak "This server does not support $type uploads" 
+		    if $type =~ /bigwig|bigbed|useq|archive/ && !$self->has_bigwig;
 		my $load = $self->get_loader($type, $file);
 		$load->eol_char($eol);
 		@tracks = $load->load($lines, $fh);
@@ -691,7 +697,7 @@ sub get_loader {
 sub guess_upload_type {
     my $self = shift;
     my ($type, $lines, $eol) = $self->_guess_upload_type(@_);
-    $type = 'bigwig' if $type eq 'wiggle' && $self->has_bigwig;
+    $type = 'wig2bigwig' if $type eq 'wiggle' && $self->has_bigwig;
     return ($type, $lines, $eol);
 }
 
@@ -704,9 +710,22 @@ sub _guess_upload_type {
     my $buffer;
     read($fh,$buffer,1024);
 
-    # first check for binary upload; currently only BAM
+    # first check for binary upload
+    my $magic = substr($buffer,0,4);
     return ('bam',[$buffer],undef)
-	if substr($buffer,0,6) eq "\x1f\x8b\x08\x04\x00\x00";
+	  if $magic eq "\x1f\x8b\x08\x04";
+    return('bigwig',[$buffer],undef)
+	  if $magic eq "\x26\xfc\x8f\x88";
+    return('bigbed',[$buffer],undef)
+	  if $magic eq "\xeb\xf2\x89\x87";
+	if ($magic eq "\x50\x4B\x03\x04") { # zip file
+		return('useq', [$buffer], undef) if $filename =~ /\.useq$/i;
+		return('archive', [$buffer], undef) if $filename =~ /\.zip$/i;
+	}
+    
+    # check for archives
+    return('archive', [$buffer], undef) if 
+    	$filename =~ /\.(?:tar|tgz|tbz|tbz2)(?:\.(gz|bz2))?$/i;
     
     # everything else is text (for now)
     my $eol = $buffer =~ /\015\012/ ? "\015\012"  # MS-DOS
@@ -725,10 +744,14 @@ sub _guess_upload_type {
     my $ftype = $filename =~ /\.gff(\.(gz|bz2|Z))?$/i  ? 'gff'
 	       :$filename =~ /\.gff3(\.(gz|bz2|Z))?$/i ? 'gff3'
 	       :$filename =~ /\.bed(\.(gz|bz2|Z))?$/i  ? 'bed'
+	       :$filename =~ /\.bw$/i                  ? 'bigwig'
+	       :$filename =~ /\.bb$/i                  ? 'bigbed'
 	       :$filename =~ /\.wig(\.(gz|bz2|Z))?$/i  ? 'wiggle'
 	       :$filename =~ /\.fff(\.(gz|bz2|Z))?$/i  ? 'featurefile'
 	       :$filename =~ /\.bam(\.gz)?$/i          ? 'bam'
 	       :$filename =~ /\.sam(\.gz)?$/i          ? 'sam'
+	       :$filename =~ /\.useq$/i                ? 'useq'
+	       :$filename =~ /\.(?:tar|tgz|tbz|tbz2|zip)(?:\.(gz|bz2))?$/i ? 'archive'
 	       :undef;
     
     return ($ftype,\@lines,$eol) if $ftype;
@@ -751,6 +774,7 @@ sub _guess_upload_type {
 	return ('gff2',\@lines,$eol)        if $line =~ /^\#\#gff-version\s+2/;
 	return ('gff3',\@lines,$eol)        if $line =~ /^\#\#gff-version\s+3/;
 	return ('wiggle',\@lines,$eol)      if $line =~ /type=wiggle/;
+	return ('bed',\@lines,$eol)         if $line =~ /^track type/;
 	return ('bed',\@lines,$eol)         if $line =~ /^\w+\s+\d+\s+\d+/;
 	return ('sam',\@lines,$eol)         if $line =~ /^\@[A-Z]{2}/;
 	return ('sam',\@lines,$eol)         if $line =~ /^[^ \t\n\r]+\t[0-9]+\t[^ \t\n\r@=]+\t[0-9]+\t[0-9]+\t(?:[0-9]+[MIDNSHP])+|\*/;
@@ -841,12 +865,12 @@ fgcolor      = black
 bgcolor      = black
 autoscale    = local
 
-
 [$track_id]
 database     = $dbname
 feature      = read_pair
 glyph        = segments
-draw_target  = 1
+feature_limit = 500
+draw_target   = 1
 show_mismatch = 1
 mismatch_color = red
 bgcolor      = blue
@@ -854,6 +878,7 @@ fgcolor      = blue
 height       = 3
 label        = 1
 label density = 50
+stranded     = 1
 bump         = fast
 key          = $key
 END
@@ -886,6 +911,52 @@ mean_color      = black
 stdev_color     = grey
 stdev_color_neg = grey
 height          = 20
+
+END
+}
+
+sub remote_bigbed_conf {
+    my $self = shift;
+    my $file = shift;
+    my $filename = $self->filename($file);
+    my ($url, $key) = @_;
+    my $id = rand(1000);
+    my $dbname = "remotebb_$id";
+    my $track_id = $filename;
+    my @COLORS = qw(blue red orange brown mauve peach 
+                green cyan yellow coral);
+    my $color = $COLORS[rand @COLORS];
+    warn "remote_bigbed_conf";
+    return <<END;
+[$dbname:database]
+db_adaptor = Bio::DB::BigBed
+db_args    = -bigbed $url
+search options = none
+
+>>>>>>>>>>>>>> cut here <<<<<<<<<<<<
+[$track_id]
+database        = $dbname
+feature  = region
+glyph    = segments
+label density = 50
+feature_limit = 500
+bump     = fast
+stranded = 1
+height   = 4
+bgcolor  = $color
+fgcolor  = $color
+key      = $filename segments
+description = 
+
+[$track_id\_coverage]
+database        = $dbname
+feature  = summary
+glyph    = wiggle_whiskers
+fgcolor  = black
+height   = 50
+autoscale = chromosome
+key      = $filename coverage
+description = 
 
 END
 }
