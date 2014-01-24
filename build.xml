@@ -26,6 +26,11 @@
     <ant target="defaultProjectInstall">
       <property name="project" value="GBrowse"/>
     </ant>
+
+    <!-- although GBrowse doesn't have component, but this call is needed to record build information. -->
+    <ant target="defaultComponentInstall">
+      <property name="project" value="GBrowse"/>
+    </ant>
   </target>
   
   <target name="GBrowse-WebInstallation" depends="GBrowse-Installation">
