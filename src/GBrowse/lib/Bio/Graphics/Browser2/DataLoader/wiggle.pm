@@ -1,6 +1,6 @@
 package Bio::Graphics::Browser2::DataLoader::wiggle;
 
-# $Id$
+# $Id: wiggle.pm 60060 2014-01-22 18:36:16Z hwang $
 use strict;
 use base 'Bio::Graphics::Browser2::DataLoader';
 use File::Basename 'basename','dirname';
