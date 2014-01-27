@@ -253,6 +253,10 @@ sub menu_labels {
       $labels{$_} = $verbs{$plugins->{$_}->type} ||
         ucfirst $plugins->{$_}->type;
     }
+
+    # eupathdb fix - 01/27/2014 ref #14412 
+    # if a plugin attribute is hide, then do not display in the analysis menu
+    delete $labels{$_} and next if $plugins->{$_}->hide == 1;
     my $name = $plugins->{$_}->name;
     $labels{$_} .= " $name";
     $labels{$_} =~ s/^\s+//;
