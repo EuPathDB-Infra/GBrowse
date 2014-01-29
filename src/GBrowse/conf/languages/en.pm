@@ -148,7 +148,7 @@ END
 
    HELP_WITH_BROWSER     => 'Help with this browser',
 
-   HELP_FORMAT_UPLOAD => 'Help with uploading custom tracks',
+   HELP_FORMAT_UPLOAD => 'GMOD-GBrowse help',
 
    CANCEL   => 'Cancel',
 

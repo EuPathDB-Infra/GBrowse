@@ -43,7 +43,8 @@ sub render_snapshots_listing {
 
 #  creating the snapshot banner
     my $html = div({-id => "Snapshot_banner",},
-		   h1({-id=>'snapshot_section_title'},$render->translate('SNAPSHOT_SELECT')),
+		 #  h1({-id=>'snapshot_section_title'},$render->translate('SNAPSHOT_SELECT')),
+		 h1($render->translate('SNAPSHOT_SELECT')),
 		   input({-type => "button", -name => "Save Snapshot", -value => "Save Snapshot", 
 			  -onClick => '$(\'save_snapshot_2\').show(); $(\'snapshot_name_2\').select();',}),
 		   div({-id => 'save_snapshot_2',
@@ -80,8 +81,8 @@ sub render_snapshots_listing {
 	);
 
     $html .= div({-id=>'headingRow',-style=>"height:20px;background-color:#F0E68C"},
-		 h1({-style => "left:100px;width:180px"},$nameHeading),
-		 h1({-style => "left:550px;width:300px;bottom:30px"},$timeStampHeading),
+		 h1({-style => "left:100px;width:180px;font-size:120%"},$nameHeading),
+		 h1({-style => "left:550px;width:300px;bottom:28px;font-size:120%"},$timeStampHeading),
 	);
 
     my $innerHTML = '';

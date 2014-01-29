@@ -1136,7 +1136,7 @@ sub render_custom_tracks_section {
     my $userdata = $self->user_tracks;
     my $html = $self->is_admin? h2({-style=>'font-style:italic;background-color:yellow'}, $self->translate('ADMIN_MODE_WARNING')) : "";
 	$html .= div({-id => "custom_tracks"}, $self->render_custom_track_listing);
-	$html .= $self->userdata_upload;
+  $html .= $self->userdata_upload;
 	$html = div({-style => 'margin: 1em;'}, $html);
 	return $html;
 }
@@ -1155,16 +1155,17 @@ sub userdata_upload {
     my $from_file    = $self->translate('FROM_FILE');
 	my $from_url     = $self->translate('FROM_URL');
     my $help_link     = $self->annotation_help;
-    $html         .= p({-style=>'margin-left:10pt;font-weight:bold'},
-		       $self->translate('ADD_YOUR_OWN_TRACKS') ,':',
-		       a({-href=>"javascript:addAnUploadField('custom_list_start', '$url', '$new_label',    '$remove_label', 'edit','$help_link')"},
-			 "[$from_text]"),
-		       a({-href=>"javascript:addAnUploadField('custom_list_start', '$url', '$mirror_label', '$remove_label', 'url','$help_link')"},
-			 "[$from_url]"),
-		       a({-href=>"javascript:addAnUploadField('custom_list_start', '$url','$upload_label',  '$remove_label' , 'upload','$help_link')",
-			  -id=>'file_adder',
-			 },"[$from_file]"));
-	$html       .= div({-id=>'custom_list_start'},'');
+
+    $html .= p({-style=>'margin-left:10pt;font-weight:bold'},
+							 $self->translate('ADD_YOUR_OWN_TRACKS') ,':',
+							 a({-href=>"javascript:addAnUploadField('custom_list_start', '$url', '$new_label',    '$remove_label', 'edit','$help_link')"},
+								 "[$from_text]"),
+							 a({-href=>"javascript:addAnUploadField('custom_list_start', '$url', '$mirror_label', '$remove_label', 'url','$help_link')"},
+								 "[$from_url]"),
+							 a({-href=>"javascript:addAnUploadField('custom_list_start', '$url','$upload_label',  '$remove_label' , 'upload','$help_link')",
+									-id=>'file_adder',
+								 },"[$from_file]"));
+		$html .= div({-id=>'custom_list_start'},'');
     return $html;
 }
 
@@ -1259,17 +1260,30 @@ END
 sub render_custom_track_listing {
 	my $self = shift;
 	my $html = h1($self->translate('UPLOADED_TRACKS'));
-	$html .= '<div style="margin:10px;border:1px solid black;border-radius:6px;background-color:#FFE4E1;padding:3px">'.
-	    '<em>Note: Retaining Custom Tracks across user sessions is a new feature.  When you log out, you may not need'.
-	    ' to upload your tracks again.  However, persistence of user tracks is not guaranteed, especially between'.
-	    ' releases.</em></div>';
-	$html .= a( {
+
+	my $eupathStyle = "margin:4px;padding:3px;border:1px solid black;border-radius:6px;background-color:#FFE4E1;";
+#	$html .= '<span style="display:inline-block;' . $eupathStyle . '">' .
+	$html .= '<center><span style="font-style:italic;font-size:110%">' .
+			'<a href="http://eupathdb.org/tutorials/GBrowse-UploadTrack-Help.pdf">' .
+			'[EuPathDB specific help]</a></span></center>';
+
+	$html .= "<center style='font-size:110%'>" . a( {
 	    -href => $self->annotation_help,
 	    -target => '_blank'
 		    },
 		    i('['.$self->translate('HELP_FORMAT_UPLOAD').']')
 	    );
+	$html .= '</center><br>' ;
+
+	$html .= '<div style="' . $eupathStyle . '">'.
+	    '<em>EuPathDB Note: our websites are now retaining Custom Tracks across user sessions.  When you log out, you should not need'.
+	    ' to upload your tracks again.  However, persistence of user tracks is not guaranteed, especially between'.
+	    ' releases.</em></div>';
+
+	$html .= '<br><div style="border:1px solid black;padding:4px;border-radius:6px;"';
 	$html .= $self->list_tracks;
+	$html .= '</div><br>';
+
 	return $html;
 }
 
@@ -2540,7 +2554,7 @@ sub toggle_section {
 		      -class => 'el_visible'},
 		     @section_body);
   my @class  = (-class=>'toggleable');
-  my @result =  $config{nodiv} ? (div({-style=>'float:left',@class},
+  my @result =  $config{nodiv} ? (div({-style=>'float:left;margin-top:10px',@class},
 				      $show_ctl.$hide_ctl),$content)
                 :$config{tight}? (div({-style=>'float:left;position:absolute;z-index:10',@class},
 				      $show_ctl.$hide_ctl).$break,$content)
