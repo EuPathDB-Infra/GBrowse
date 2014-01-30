@@ -1259,7 +1259,9 @@ END
 # Render Custom Track Listing - Returns the HTML listing of public, uploaded, imported and shared tracks added to a session, and a section to add more.
 sub render_custom_track_listing {
 	my $self = shift;
-	my $html = h1($self->translate('UPLOADED_TRACKS'));
+	my $html = h1(
+			{ -style => "margin-bottom:4px", },
+			$self->translate('UPLOADED_TRACKS'));
 
 	my $eupathStyle = "margin:4px;padding:3px;border:1px solid black;border-radius:6px;background-color:#FFE4E1;";
 #	$html .= '<span style="display:inline-block;' . $eupathStyle . '">' .
@@ -1354,8 +1356,8 @@ sub render_track_list_title {
     if ($short_name =~ /http_([^_]+).+_gbgff_.+_t_(.+)_s_/) {
 	my @tracks = split /\+/, $2;
 	$short_name = "Shared track from $1 (@tracks)";
-    } elsif (length $short_name > 40) {
-	$short_name =~ s/^(.{40}).+/$1.../;
+    } elsif (length $short_name > 80) {
+	$short_name =~ s/^(.{80}).+/$1.../;
     }
 
     my $is_mine = $userdata->is_mine($fileid);
@@ -1395,7 +1397,7 @@ sub render_track_list_title {
     my $title = h1(
 	{
 	    ($is_mine ? (-title => $self->tr('ADD_TITLE')) : ()),
-	    -style => "display: inline; font-size: 14pt;$cursor",
+	    -style => "display: inline; font-size: 11pt;$cursor",
 	    -onClick         => ($uploaddb && $is_mine)? "Controller.edit_upload_title('$fileid', this)" : "",
 	    -contentEditable => ($uploaddb && $is_mine)? 'true' : 'false',
 	},
@@ -1499,7 +1501,7 @@ sub render_track_details {
 	my $globals	= $self->globals;
 	my $random_id = 'upload_'.int rand(9999);
 	my $is_mine   = $userdata->is_mine($fileid);
-	my $cursor  = $is_mine ? 'cursor:pointer' : 'cursor:auto';	
+	my $cursor  = $is_mine ? 'cursor:pointer;margin:5px;border:1px solid black;padding:2px;background:white' : 'cursor:auto;margin:5px;border:1px solid black;padding:2px;background:white';	
 	my $description = div(
 		{
 		    ($is_mine ? (-title           => $self->tr('ADD_DESCRIPTION')) : ()),
@@ -1539,7 +1541,7 @@ sub render_track_details {
 	
 	return div(
 		{
-			-style => $display? "display: block;" : "display: none;",
+			-style =>  $display? "display: block;margin:8px;" : "display: none;margin:8px;",
 			-class => "details"
 		},
 		i($description),
