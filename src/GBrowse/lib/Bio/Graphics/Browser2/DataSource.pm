@@ -994,6 +994,8 @@ sub open_database {
 
   my ($dbid,$adaptor,@argv) = $self->db_settings($track,$length);
   my $db                    = Bio::Graphics::Browser2::DataBase->open_database($adaptor,@argv);
+  ## eupathdb 02-06-2014 added in order to avoid gbrowse's crash due to incorrect bigwig path
+  return unless $db;
   $self->fix_sqlite if $adaptor eq 'Bio::DB::SeqFeature::Store' && "@argv" =~ /SQLite/;  # work around broken bioperl
   
   # do a little extra stuff the first time we see a new database

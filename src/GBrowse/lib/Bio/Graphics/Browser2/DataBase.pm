@@ -49,7 +49,9 @@ sub open_database {
       $CACHE->clear();  # last ditch attempt to free filehandles
       $db = eval {$adaptor->new(@argv)};
   }
-  die "Could not open database: $@" unless $db;
+  ## eupathdb 02-06-2014 commented out because gbrowse crashed due to incorrect bigwig path
+  #die "Could not open database: $@" unless $db;
+  print "Could not open database: $@" and return unless $db;
 
   $db->strict_bounds_checking(1) if $db->can('strict_bounds_checking');
   $db->absolute(1)               if $db->can('absolute');
