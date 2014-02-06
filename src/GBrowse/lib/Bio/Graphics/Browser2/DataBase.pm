@@ -51,7 +51,7 @@ sub open_database {
   }
   ## eupathdb 02-06-2014 commented out because gbrowse crashed due to incorrect bigwig path
   #die "Could not open database: $@" unless $db;
-  print "Could not open database: $@" and return unless $db;
+  print "<h3>Could not open database: $@</h3>" and return unless $db;
 
   $db->strict_bounds_checking(1) if $db->can('strict_bounds_checking');
   $db->absolute(1)               if $db->can('absolute');
