@@ -2556,7 +2556,7 @@ sub toggle_section {
 		      -class => 'el_visible'},
 		     @section_body);
   my @class  = (-class=>'toggleable');
-  my @result =  $config{nodiv} ? (div({-style=>'float:left;margin-top:10px',@class},
+  my @result =  $config{nodiv} ? (div({-style=>'float:left',@class},
 				      $show_ctl.$hide_ctl),$content)
                 :$config{tight}? (div({-style=>'float:left;position:absolute;z-index:10',@class},
 				      $show_ctl.$hide_ctl).$break,$content)

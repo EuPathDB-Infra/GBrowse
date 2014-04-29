@@ -157,6 +157,7 @@ sub render_track_listing {
 
     my $expand_all = '&nbsp;' .img({-class  =>  'clickable expand_all range_expand',
 				    -src    => $source->globals->button_url .'/open_open.png',
+            -title  => "click to open all subtracks",
 				    -onClick => "gbExpandAll(this,'range',event)"});
     return join( "\n",
 		 start_form(-name=>'trackform',
@@ -284,6 +285,7 @@ sub nest_toggles {
 	    my $id =  "${key}_section";
 	    my $ea = '&nbsp;' . img({-class  =>  "clickable expand_all ${id}_expand",
 				     -src    => $source->globals->button_url .'/open_open.png',
+             -title  => "click to open all subtracks",
 				     -onClick => "gbExpandAll(this,'$id',event)"});
 	    $settings->{section_visible}{$id} = $default unless exists $settings->{section_visible}{$id};
 	    $result .= $render->toggle_section({on=>$force_open||$settings->{section_visible}{$id}},
