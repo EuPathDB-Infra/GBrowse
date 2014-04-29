@@ -46,7 +46,7 @@ END
 
    LANDMARK => 'Landmark or Region',
 
-   BOOKMARK => 'Bookmark this',
+   BOOKMARK => 'Generate URL',
 
    CHROM_SIZES => 'Get chrom sizes',
 

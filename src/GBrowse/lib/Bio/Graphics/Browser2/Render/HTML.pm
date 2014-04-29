@@ -631,7 +631,7 @@ sub render_title {
     my $error = shift;
     my $settings = $self->state;
     return $settings->{head}
-        ? h1({-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
+        ? h1({-style=>'margin-bottom:-1pt',-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
 	: '';
 }
 
