@@ -46,7 +46,7 @@ END
 
    LANDMARK => 'Landmark or Region',
 
-   BOOKMARK => 'Bookmark this',
+   BOOKMARK => 'Generate URL',
 
    CHROM_SIZES => 'Get chrom sizes',
 
@@ -210,7 +210,7 @@ END
 
    UPLOAD_TITLE=> 'Upload your own data',
 
-   UPLOAD_FILE => 'Upload a track file',
+   UPLOAD_FILE => 'Upload a track file; this might take some time depending on the size and format; see different options at <a target="_blank" href="http://eupathdb.org/tutorials/GBrowse-UploadTrack-Help.pdf">EuPathDB specific help</a>.<br><br>',
 
    MIRROR_FILE  => 'Fetch track file from this URL',
 

@@ -256,6 +256,10 @@ sub make_markup {
       $start++ if $p->strand < 0;
       ($start,$end) = map {$segment_length-$_} ($end,$start) if $flip;
 
+      # a tricky issue for reverse strand, might have other better solution 
+      # refer to eupathdb bug #15236 https://redmine.apidb.org/issues/15236
+      $start = $start - 1 if $p->strand < 0;
+
       warn("$p ". $p->location->to_FTstring() . " type is ".$p->primary_tag) if DEBUG;
       $start = 0                   if $start < 0;  # this can happen
       $end   = $segment->length    if $end > $segment->length;

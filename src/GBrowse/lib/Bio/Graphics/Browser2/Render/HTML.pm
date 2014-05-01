@@ -631,7 +631,7 @@ sub render_title {
     my $error = shift;
     my $settings = $self->state;
     return $settings->{head}
-        ? h1({-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
+        ? h1({-style=>'margin-bottom:-1pt',-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
 	: '';
 }
 
@@ -2556,7 +2556,7 @@ sub toggle_section {
 		      -class => 'el_visible'},
 		     @section_body);
   my @class  = (-class=>'toggleable');
-  my @result =  $config{nodiv} ? (div({-style=>'float:left;margin-top:10px',@class},
+  my @result =  $config{nodiv} ? (div({-style=>'float:left',@class},
 				      $show_ctl.$hide_ctl),$content)
                 :$config{tight}? (div({-style=>'float:left;position:absolute;z-index:10',@class},
 				      $show_ctl.$hide_ctl).$break,$content)
