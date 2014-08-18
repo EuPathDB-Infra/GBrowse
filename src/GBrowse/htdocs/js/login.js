@@ -724,7 +724,7 @@ function login_get_account(username,session,remember,openid,ajax_url_base,redire
                      openid:   UsingOpenID
                     },
         onSuccess: function(transport) {
-	    if ($('loginBusy') != null) $('loginBusy').hide();
+            if ($('loginBusy') != null) $('loginBusy').hide();
             var results = transport.responseJSON;
             if(results.id != null) {
                 if(results.id == 'error') {
@@ -751,6 +751,9 @@ function login_get_account(username,session,remember,openid,ajax_url_base,redire
                     return;
                 }
             }
+        },
+        onFailure: function (t) {
+            GB.handleLoginError("GB-2", redirectUrl);
         }
     });
     return;
