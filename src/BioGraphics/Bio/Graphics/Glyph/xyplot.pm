@@ -641,7 +641,9 @@ sub symbols {
 sub draw_label {
     my $self = shift;
     my ($gd,$left,$top,$partno,$total_parts) = @_;
-    my $label = $self->label or return;
+    # fixed the rnaseq subtrack label disappear if over 15 subtracks selected 
+    # 08-21-2014 Haiming Wang
+    my $label = $self->label || $self->feature->display_name or return;
 
     if ($self->bump eq 'overlap') {
 	my $x    = $self->left + $left + $self->pad_left;
@@ -658,7 +660,7 @@ sub draw_label {
 	$self->panel->glyph_scratch($self->panel->glyph_scratch + $width);
 	$self->panel->add_key_box($self,$label,$x,$top) if $self->record_label_positions;
 
-    } elsif ($self->label_position eq 'left') {
+    } elsif ($self->label_position eq 'left' || $self->label_position eq 'top') {
 	  my $font = $self->labelfont;
 	  my $x = $self->left + $left - $font->width*length($label) - $self->extra_label_pad;
 	  my $y = $self->{top} + $top;
