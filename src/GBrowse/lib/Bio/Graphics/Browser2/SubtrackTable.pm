@@ -446,6 +446,7 @@ sub infer_settings_from_source {
 
       my (undef,$adaptor) = $source->db_settings($label);
 
+      last TRY if $adaptor eq "Bio::DB::Sam";   ## EuPathDB Patch: do not open BAM or SAM files to get meta info.  it takes a lot of time and they have no meta info
       my $db   = $source->open_database($label) or last TRY;
       $db->can('metadata') or last TRY;
       my $meta = $db->metadata;
