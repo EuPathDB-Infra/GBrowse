@@ -79,7 +79,7 @@ use Bio::Graphics::Browser2::Util;
 use Bio::Graphics::Feature;
 use Bio::Graphics::FeatureFile;
 use CGI qw/:standard escape/;
-use CGI::Pretty 'html3';
+# use CGI::Pretty 'html3';
 use CGI::Carp 'fatalsToBrowser';
 use CGI::Toggle;
 use Math::Round 'nearest';
