@@ -5,6 +5,7 @@ package Bio::Graphics::Browser2::Session;
 use strict;
 use warnings;
 
+use Bio::Graphics::Browser2::ConnectionCache;
 use CGI::Session;
 use CGI::Cookie;
 use Fcntl 'LOCK_EX','LOCK_SH';
@@ -96,17 +97,12 @@ sub load_session {
     my $before = Time::HiRes::time();
     print STDERR "TIMETEST::Begin Session_Connect_$requestId $before\n" if $perfLogOn;
     
-    my $dbh = DBI->connect($connectionStr, $username, $password);
+    my $dbh = Bio::Graphics::Browser2::ConnectionCache->get_instance->connect($connectionStr, $username, $password, "Session");
 
     my $after = Time::HiRes::time();
     my $diffTime =$after - $before;
     print STDERR "TIMETEST::End Session_Connect_$requestId $before to $after = $diffTime\n" if $perfLogOn;
     print STDERR "Connected to Oracle DB $connectionStr, setting LongReadLen and LongTruncOk.\n" if DEBUG;
-
-    if ($globals->getUserDbConfig->isOracle) {
-        $dbh->{LongReadLen} = 200000;
-        $dbh->{LongTruncOk} = 1; # RRD: not sure about this though- we will want to error if we can't read the entire session
-    }
     
     print STDERR "Creating new session with driver $driver and $sid\n" if DEBUG;
     $before = Time::HiRes::time();
