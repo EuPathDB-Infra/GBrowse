@@ -318,6 +318,30 @@ sub flush {
   }
   ## DEBUG ENDS
 
+  # determine whether to log session sizes
+  my $gusHome = $ENV{'GUS_HOME'};
+  my $indicatorFile = "LOG_GBROWSE_SESSION_SIZES";
+  if ($self->{session} && -e "$gusHome/config/$indicatorFile") {
+    # get timestamp and format as needed
+    my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+    $year += 1900;
+    $mon += 1;
+    if ($hour < 10) { $hour = '0' . $hour; }
+    if ($min < 10) { $min = '0' . $min; }
+    if ($sec < 10) { $sec = '0' . $sec; }
+    # create log file name and line to log from date and session info
+    my $logfile = "/tmp/GBROWSE_SESSIONS_$year$mon$mday";
+    my $serializer = $self->{session}->_serializer;
+    my $sessionDataRef = $self->{session}->dataref;
+    my $sessionId = $sessionDataRef->{_SESSION_ID};
+    my $dataLength = length($serializer->freeze($sessionDataRef));
+    my $logline = "$hour:$min:$sec PID $$ flushed SID $sessionId, $dataLength chars\n";
+    # append line to file
+    open(my $fh, '>>', $logfile);
+    print $fh "$logline";
+    close $fh;
+  }
+
   $self->{session}->flush if $self->{session};
 #  $self->unlock;
   warn "[$$] SESSION FLUSH ERROR: ",$self->{session}->errstr 
