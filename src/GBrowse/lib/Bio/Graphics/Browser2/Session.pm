@@ -6,6 +6,7 @@ use strict;
 use warnings;
 
 use Bio::Graphics::Browser2::ConnectionCache;
+use Bio::Graphics::Browser2::GbCgiSession;
 use CGI::Session;
 use CGI::Cookie;
 use Fcntl 'LOCK_EX','LOCK_SH';
@@ -108,7 +109,7 @@ sub load_session {
     $before = Time::HiRes::time();
     print STDERR "TIMETEST::Begin Session_Create_$requestId $before\n" if $perfLogOn;
 
-    my $cgiSession = CGI::Session->new($driver, $sid, { Handle => $dbh, TableName => $schema."SESSIONS" });
+    my $cgiSession = Bio::Graphics::Browser2::GbCgiSession->new($driver, $sid, { Handle => $dbh, TableName => $schema."SESSIONS" });
 
     $after = Time::HiRes::time();
     $diffTime =$after - $before;
