@@ -2248,7 +2248,10 @@ sub track_citation {
     my $title    = div({-style => 'background:gainsboro;padding:5px;font-weight:bold'},$key);
     my $download = a({-href=>"?l=$label;f=save+datafile"},$self->tr('DOWNLOAD_ALL'));
     my $id       = $self->tr('TRACK_ID',$label);
-    return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,"[$download]"),$cit_html);
+
+    # eupathdb 12/15/2014 fix redmine issue - https://redmine.apidb.org/issues/18002
+    #return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,"[$download]"),$cit_html);
+    return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,""),$cit_html);
 }
 
 sub download_track_menu {
