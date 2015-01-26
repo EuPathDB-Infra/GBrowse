@@ -60,7 +60,7 @@ sub flush {
     if ( $self->_test_status(STATUS_DELETED) ) {
         print STDERR "GbCgiSession: Deleting GBrowse session with id $sid\n";
         defined($driver->remove($self->id)) or
-            return $self->set_error( "flush(): couldn't remove session data: " . $driver->errstr );
+            return $self->set_error( "GbCgiSession: Error: flush(): couldn't remove session data: " . $driver->errstr );
         $self->{_DATA} = {};                        # <-- removing all the data, making sure
                                                     # it won't be accessible after flush()
         return $self->_unset_status(STATUS_DELETED);
@@ -72,7 +72,7 @@ sub flush {
 
         # convert session data to string for storing
         my $datastr = $serializer->freeze( $self->dataref ) or
-            return $self->set_error( "flush(): couldn't freeze data: " . $serializer->errstr );
+            return $self->set_error( "GbCgiSession: Error: flush(): couldn't freeze data: " . $serializer->errstr );
 
         # test that freeze() returned a value
         unless ( defined $datastr ) {
@@ -82,7 +82,7 @@ sub flush {
 
         # make sure string generated can be reconstituted into an object
         my $sessionData = $serializer->thaw($datastr) or
-            return $self->set_error( "flush(): Error: Serialized session is not deserializable!\nSession = \n$datastr" );
+            return $self->set_error( "GbCgiSession: Error: flush(): Serialized session is not deserializable!\nSession = \n$datastr" );
 
         # destructure values saved from original load; need them to test eventual write
         my ($dsn, $sid, $dsn_args, $readonly) = ($self->{'gcs_dsn'}, $self->{'gcs_sid'}, $self->{'gcs_dsn_args'}, $self->{'gcs_readonly'});
@@ -127,7 +127,7 @@ sub flush {
         }
 
         if (!$success) {
-            my $errorMsg = "GbCgiSession: flush() failed, attempts to save session have been exhausted.";
+            my $errorMsg = "GbCgiSession: Error: flush() failed, attempts to save session have been exhausted.";
             print STDERR "$errorMsg\n";
             return $self->set_error($errorMsg);
         }
