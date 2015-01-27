@@ -25,27 +25,33 @@ sub new {
     return $self;
 }
 
-sub _driver() {
+sub _driver {
     my $self = shift;
     my $driverName = "Bio::Graphics::Browser2::OracleSessionDriver";
     $driverName->new( $self->{_DRIVER_ARGS} );
 }
 
+sub logPrefix {
+	my $self = shift;
+	my $isError = shift;
+    return "GbCgiSession (PID $$): " . ($isError ? "Error: " : "");
+}
+
 sub flush {
     my $self = shift;
 
-    print STDERR "GbCgiSession: flush() called\n";
+    print STDERR logPrefix(0) . "flush() called\n";
 
     # Would it be better to die or err if something very basic is wrong here? 
     # I'm trying to address the DESTROY related warning
     # from: http://rt.cpan.org/Ticket/Display.html?id=17541
     # return unless defined $self;
 
-    print STDERR "GbCgiSession: Session is empty; returning with no action.\n" unless $self->id;
+    print STDERR logPrefix(0) . "Session is empty; returning with no action.\n" unless $self->id;
     return unless $self->id;            # <-- empty session
 
     # neither new, nor deleted nor modified
-    print STDERR "GbCgiSession: Session is not empty but is not new, deleted, or modified; returning with no action.\n" if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
+    print STDERR logPrefix(0) . "Session is not empty but is not new, deleted, or modified; returning with no action.\n" if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
     return if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
 
     if ( $self->_test_status(STATUS_NEW) && $self->_test_status(STATUS_DELETED) ) {
@@ -58,9 +64,9 @@ sub flush {
     my $sid = $self->id;
 
     if ( $self->_test_status(STATUS_DELETED) ) {
-        print STDERR "GbCgiSession: Deleting GBrowse session with id $sid\n";
+        print STDERR logPrefix(0) . "Deleting GBrowse session with id $sid\n";
         defined($driver->remove($self->id)) or
-            return $self->set_error( "GbCgiSession: Error: flush(): couldn't remove session data: " . $driver->errstr );
+            return $self->set_error( logPrefix(1) . "flush(): couldn't remove session data: " . $driver->errstr );
         $self->{_DATA} = {};                        # <-- removing all the data, making sure
                                                     # it won't be accessible after flush()
         return $self->_unset_status(STATUS_DELETED);
@@ -68,21 +74,21 @@ sub flush {
 
     if ( $self->_test_status(STATUS_NEW | STATUS_MODIFIED) ) {
 
-        print STDERR "GbCgiSession: Updating value of GBrowse session with id $sid\n";
+        print STDERR logPrefix(0) . "Updating value of GBrowse session with id $sid\n";
 
         # convert session data to string for storing
         my $datastr = $serializer->freeze( $self->dataref ) or
-            return $self->set_error( "GbCgiSession: Error: flush(): couldn't freeze data: " . $serializer->errstr );
+            return $self->set_error( logPrefix(1) . "flush(): couldn't freeze data: " . $serializer->errstr );
 
         # test that freeze() returned a value
         unless ( defined $datastr ) {
-            print STDERR "GbCgiSession: Error: Could not freeze data: " . $serializer->errstr . "\n";
-            return $self->set_error( "flush(): couldn't freeze data: " . $serializer->errstr );
+            print STDERR logPrefix(1) . "Could not freeze data: " . $serializer->errstr . "\n";
+            return $self->set_error( logPrefix(1) . "flush(): couldn't freeze data: " . $serializer->errstr );
         }
 
         # make sure string generated can be reconstituted into an object
         my $sessionData = $serializer->thaw($datastr) or
-            return $self->set_error( "GbCgiSession: Error: flush(): Serialized session is not deserializable!\nSession = \n$datastr" );
+            return $self->set_error( logPrefix(1) . "flush(): Serialized session is not deserializable!\nSession = \n$datastr" );
 
         # destructure values saved from original load; need them to test eventual write
         my ($dsn, $sid, $dsn_args, $readonly) = ($self->{'gcs_dsn'}, $self->{'gcs_sid'}, $self->{'gcs_dsn_args'}, $self->{'gcs_readonly'});
@@ -99,24 +105,24 @@ sub flush {
         while ( $remainingAttempts > 0 && !$success ) {
 
             # store the session
-            print STDERR "GbCgiSession: Attempting to store session for SID $sid.  $remainingAttempts attempts remaining.\n";
+            print STDERR logPrefix(0) . "Attempting to store session for SID $sid.  $remainingAttempts attempts remaining.\n";
             if ( ! defined($driver->store($self->id, $datastr)) ) {
-                print STDERR "GbCgiSession: Error: store() attempt failed; couldn't store datastr: " . $driver->errstr;
+                print STDERR logPrefix(1) . "store() attempt failed; couldn't store datastr: " . $driver->errstr;
                 $remainingAttempts--;
                 next;
             }
 
             # seem to have stored data ok, but let's make sure
-            print STDERR "GbCgiSession: Testing session write for sid $sid\n";
+            print STDERR logPrefix(0) . "Testing session write for sid $sid\n";
             my $error = 0;
             my $testSession = Bio::Graphics::Browser2::GbCgiSession->load($dsn, $sid, $dsn_args, $readonly) or $error = 1;
             if ( $error ) {
-                print STDERR "GbCgiSession: Error: Unable to load just-written session with sid $sid\n" . CGI::Session->errstr();
+                print STDERR logPrefix(1) . "Unable to load just-written session with sid $sid\n" . CGI::Session->errstr();
                 $remainingAttempts--;
                 next;
             }
             if ( $testSession->is_expired || $testSession->is_empty ) {
-                print STDERR "GbCgiSession: Error: Very recently stored session is expired or empty!\n";
+                print STDERR logPrefix(1) . "Very recently stored session is expired or empty!\n";
                 $remainingAttempts--;
                 next;
             }
@@ -127,13 +133,13 @@ sub flush {
         }
 
         if (!$success) {
-            my $errorMsg = "GbCgiSession: Error: flush() failed, attempts to save session have been exhausted.";
+            my $errorMsg = logPrefix(1) . "flush() failed, attempts to save session have been exhausted.";
             print STDERR "$errorMsg\n";
             return $self->set_error($errorMsg);
         }
     }
 
-    print STDERR "GbCgiSession: flush() complete\n";
+    print STDERR logPrefix(0) . "flush() complete\n";
     return 1;
 }
 
