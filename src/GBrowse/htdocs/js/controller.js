@@ -858,10 +858,14 @@ var GBrowseController = Class.create({
                     // the definition for this call is in login.js
                     login_get_account(results.username,results.sessionid,remember,false,ajax_base_url,redirectUrl,cookieMaxAge);
                 }
-                else
+                else {
                     message_area.innerHTML='<div style="color:red">'+results.message+'</div>';
                 }
-            });
+            },
+            onFailure: function (t) {
+                GB.handleLoginError("GB-1", redirectUrl);
+            }
+        });
     },
 
     plugin_go:

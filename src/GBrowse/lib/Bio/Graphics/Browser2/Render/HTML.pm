@@ -170,6 +170,7 @@ sub render_navbar {
       start_form(
 	  -name   => 'searchform',
 	  -id     => 'searchform',
+    -title => 'You may enter also a gene ID',
                     
       ),
       hidden(-name=>'force_submit',-value=>0),
@@ -287,7 +288,7 @@ sub render_search_form_objects {
         -id      => 'landmark_search_field',
         -size    => 35,
         -default => $search_value,
-	-override=>1,
+	      -override=>1,
     );
     if ($self->setting('autocomplete')) {
         my $spinner_url = $self->data_source->button_url.'/spinner.gif';
@@ -2248,7 +2249,10 @@ sub track_citation {
     my $title    = div({-style => 'background:gainsboro;padding:5px;font-weight:bold'},$key);
     my $download = a({-href=>"?l=$label;f=save+datafile"},$self->tr('DOWNLOAD_ALL'));
     my $id       = $self->tr('TRACK_ID',$label);
-    return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,"[$download]"),$cit_html);
+
+    # eupathdb 12/15/2014 fix redmine issue - https://redmine.apidb.org/issues/18002
+    #return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,"[$download]"),$cit_html);
+    return  p(div({-style=>'text-align:center;font-size:small'},$title,$id,""),$cit_html);
 }
 
 sub download_track_menu {

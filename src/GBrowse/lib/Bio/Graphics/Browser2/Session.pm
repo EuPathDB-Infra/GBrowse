@@ -5,6 +5,8 @@ package Bio::Graphics::Browser2::Session;
 use strict;
 use warnings;
 
+use Bio::Graphics::Browser2::ConnectionCache;
+use Bio::Graphics::Browser2::GbCgiSession;
 use CGI::Session;
 use CGI::Cookie;
 use Fcntl 'LOCK_EX','LOCK_SH';
@@ -96,23 +98,18 @@ sub load_session {
     my $before = Time::HiRes::time();
     print STDERR "TIMETEST::Begin Session_Connect_$requestId $before\n" if $perfLogOn;
     
-    my $dbh = DBI->connect($connectionStr, $username, $password);
+    my $dbh = Bio::Graphics::Browser2::ConnectionCache->get_instance->connect($connectionStr, $username, $password, "Session");
 
     my $after = Time::HiRes::time();
     my $diffTime =$after - $before;
     print STDERR "TIMETEST::End Session_Connect_$requestId $before to $after = $diffTime\n" if $perfLogOn;
     print STDERR "Connected to Oracle DB $connectionStr, setting LongReadLen and LongTruncOk.\n" if DEBUG;
-
-    if ($globals->getUserDbConfig->isOracle) {
-        $dbh->{LongReadLen} = 200000;
-        $dbh->{LongTruncOk} = 1; # RRD: not sure about this though- we will want to error if we can't read the entire session
-    }
     
     print STDERR "Creating new session with driver $driver and $sid\n" if DEBUG;
     $before = Time::HiRes::time();
     print STDERR "TIMETEST::Begin Session_Create_$requestId $before\n" if $perfLogOn;
 
-    my $cgiSession = CGI::Session->new($driver, $sid, { Handle => $dbh, TableName => $schema."SESSIONS" });
+    my $cgiSession = Bio::Graphics::Browser2::GbCgiSession->new($driver, $sid, { Handle => $dbh, TableName => $schema."SESSIONS" });
 
     $after = Time::HiRes::time();
     $diffTime =$after - $before;
@@ -321,6 +318,30 @@ sub flush {
       warn '[',$self->time,'] ',"[$$] WRITING @tracks\n";
   }
   ## DEBUG ENDS
+
+  # determine whether to log session sizes
+  my $gusHome = $ENV{'GUS_HOME'};
+  my $indicatorFile = "LOG_GBROWSE_SESSION_SIZES";
+  if ($self->{session} && -e "$gusHome/config/$indicatorFile") {
+    # get timestamp and format as needed
+    my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+    $year += 1900;
+    $mon += 1;
+    if ($hour < 10) { $hour = '0' . $hour; }
+    if ($min < 10) { $min = '0' . $min; }
+    if ($sec < 10) { $sec = '0' . $sec; }
+    # create log file name and line to log from date and session info
+    my $logfile = "/tmp/GBROWSE_SESSIONS_$year$mon$mday";
+    my $serializer = $self->{session}->_serializer;
+    my $sessionDataRef = $self->{session}->dataref;
+    my $sessionId = $sessionDataRef->{_SESSION_ID};
+    my $dataLength = length($serializer->freeze($sessionDataRef));
+    my $logline = "$hour:$min:$sec PID $$ flushed SID $sessionId, $dataLength chars\n";
+    # append line to file
+    open(my $fh, '>>', $logfile);
+    print $fh "$logline";
+    close $fh;
+  }
 
   $self->{session}->flush if $self->{session};
 #  $self->unlock;

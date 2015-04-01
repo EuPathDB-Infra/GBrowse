@@ -27,6 +27,7 @@ use Bio::Graphics::Browser2::Util qw[modperl_request url_label];
 use Bio::Graphics::Browser2::UserTracks;
 use Bio::Graphics::Browser2::UserDB;
 use Bio::Graphics::Browser2::Session;
+use Bio::Graphics::Browser2::ConnectionCache;
 use Bio::Graphics::Browser2::Render::SnapshotManager;
 use POSIX ":sys_wait_h";
 
@@ -233,6 +234,14 @@ sub destroy {
 sub run {
   my $self = shift;
   my $fh   = shift || \*STDOUT;
+  my $result = $self->doRun($fh);
+  #Bio::Graphics::Browser2::ConnectionCache->get_instance->close;
+  $result;
+}
+
+sub doRun {
+  my $self = shift;
+  my $fh   = shift;
   my $old_fh = select($fh);
 
   my $debug = $self->debug || TRACE;
@@ -2205,7 +2214,7 @@ sub reconfigure_track {
 	    my $bp = param('bicolor_pivot_value');
 	    $o->{$s} =    $bp if !defined $configured_value or $bp != $configured_value;
 	} else {
-	    $o->{$s} = $value if !defined $configured_value or $value ne $configured_value;
+          $o->{$s} = $value ;
 	    if ($glyph eq 'wiggle_whiskers') {# workarounds for whisker options
 		$o->{"${s}_neg"}  = $value if $s =~ /^(mean_color|stdev_color)/; 
 		$o->{min_color}   = $value if $s eq 'max_color';

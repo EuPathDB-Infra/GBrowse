@@ -314,7 +314,7 @@ sub draw_plot {
     $self->_draw_scale($gd,$x_scale,$scaled_min,$scaled_max,$dx,$dy,$y_origin);
     $self->panel->endGroup($gd);
 
-    $self->draw_label(@_)       if $self->option('label') || $self->record_label_positions;
+    $self->draw_label(@_)       if $self->option('label') || $self->feature->display_name || $self->record_label_positions;
     $self->draw_description(@_) if $self->option('description');
 
     $self->panel->endGroup($gd);

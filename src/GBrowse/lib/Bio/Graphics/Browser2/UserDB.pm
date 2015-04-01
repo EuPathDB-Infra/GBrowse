@@ -4,8 +4,8 @@ package Bio::Graphics::Browser2::UserDB;
 use strict;
 use Bio::Graphics::Browser2;
 use Bio::Graphics::Browser2::SendMail;
+use Bio::Graphics::Browser2::ConnectionCache;
 use CGI qw(:standard);
-use DBI;
 use Digest::SHA qw(sha1_hex sha1);
 use JSON;
 use Text::ParseWords 'quotewords';
@@ -35,7 +35,7 @@ sub new {
   my $before = Time::HiRes::time();
   print STDERR "TIMETEST::Begin DB_Connect_UserDB_$requestId $before\n" if $globals->getUserDbConfig->perfLogOn;
 
-  my $login   = DBI->connect($connectionString, $username, $password);
+  my $login = Bio::Graphics::Browser2::ConnectionCache->get_instance->connect($connectionString, $username, $password, "UserDB");
   unless ($login) {
       confess "Could not open login database $connectionString";
   }
