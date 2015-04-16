@@ -170,6 +170,7 @@ sub render_navbar {
       start_form(
 	  -name   => 'searchform',
 	  -id     => 'searchform',
+    -title => 'You may enter also a gene ID',
                     
       ),
       hidden(-name=>'force_submit',-value=>0),
@@ -287,7 +288,7 @@ sub render_search_form_objects {
         -id      => 'landmark_search_field',
         -size    => 35,
         -default => $search_value,
-	-override=>1,
+	      -override=>1,
     );
     if ($self->setting('autocomplete')) {
         my $spinner_url = $self->data_source->button_url.'/spinner.gif';
