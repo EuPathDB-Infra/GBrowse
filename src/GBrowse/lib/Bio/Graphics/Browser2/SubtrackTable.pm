@@ -407,6 +407,7 @@ sub infer_settings_from_source {
     my (@dimensions,@rows);
   TRY: {
 
+
       if (my @facets = shellwords $source->setting($label=>'subtrack facets')) {
 	  @dimensions = map {[$_,'tag_value',$_]} @facets;
 	  @rows       = $package->get_facet_values($source,$label,@facets);
@@ -415,8 +416,20 @@ sub infer_settings_from_source {
       
       if ((my $d = $source->setting($label => 'subtrack select')) &&
 	  (my $r = $source->setting($label => 'subtrack table'))) {
-	  @dimensions     = map {[shellwords($_)]}  split ';',$d;
+
+        # EuPath Patch:  Allow callback for subtrack select and table
+        if(ref $r eq 'CODE') {
+          @rows = eval {$r->()};
+        }
+        else {
 	  @rows           = map {[shellwords($_)]}  split ';',$r;
+        }
+        if(ref $d eq 'CODE') {
+          @dimensions = eval {$d->()};
+        }
+        else {
+	  @dimensions     = map {[shellwords($_)]}  split ';',$d;
+        }
 	last TRY;  
       }
       
