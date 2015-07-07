@@ -498,16 +498,12 @@ sub print_datafile {
     $self->print_stylesheet($segment,$labels) 
 	if $self->get_do_stylesheet;
 
-   # the following block is commented out by Haiming Wang on 07/07/2015 in order to fix issue #19788
-   # https://redmine.apidb.org/issues/19788
-   # we either update "dump_track" method to let it handle sqlName/sqlParam
-   # otherwise, we use default print_gff3_data to dump data out
-   # I will look into dump_track later and see if we can modify it.
-   # if (@$labels == 1) {
-	 #  $self->dump_track($labels->[0],$segment); 
-	 #  return;
-   # }
-   # end comment by Haiming Wang 07/07/2015
+   # The error mentioned in - https://redmine.apidb.org/issues/19788 was caused by the '/' in feature name;
+   # the following block needs further look to make sure it's working. 
+    if (@$labels == 1) {
+	   $self->dump_track($labels->[0],$segment); 
+	   return;
+    }
 
     # We don't handle heterogeneous downloads (multiple tracks with different database backends)
     # well, so we default to a uniform GFF3 dump. In the future, this should be replaced with
