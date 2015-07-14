@@ -37,7 +37,7 @@
     <!-- NEW! install gbrowse here now with minimal changes to codebase (will clean up later) -->
     <!-- $SITE_REPO/$SITE_DIR/project_home/ApiCommonWebsite/Model/bin/install_gbrowse2 $SITE_REPO/$SITE_DIR/etc/webapp.prop build_install_patch -->
     <exec dir="${projectsDir}/ApiCommonWebsite/Model/bin"
-               executable="/bin/sh"
+               executable="/bin/bash"
                failonerror="true"
                failifexecutionfails="true">
            <arg line="install_gbrowse2"/>
