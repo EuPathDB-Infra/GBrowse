@@ -3,6 +3,7 @@ package Bio::Graphics::Glyph::wiggle_data;
 use strict;
 use base qw(Bio::Graphics::Glyph::minmax);
 use File::Spec;
+
 sub minmax {
     my $self   = shift;
     my $parts  = shift;
@@ -304,6 +305,7 @@ sub draw {
   $retval =  $self->draw_wigdata($feature,@_)   if $datatype eq 'wigdata';
   $retval =  $self->draw_densefile($feature,@_) if $datatype eq 'densefile';
   $retval =  $self->draw_coverage($feature,@_)  if $datatype eq 'coverage';
+
   $retval =  $self->draw_statistical_summary($feature,@_) if $datatype eq 'statistical_summary';
   $retval =  $self->SUPER::draw(@_) if $datatype eq 'generic';
 
@@ -396,6 +398,7 @@ sub draw_statistical_summary {
     my $stats = $feature->statistical_summary($self->width);
     $stats   ||= [];
     my @vals  = map {$_->{validCount} ? $_->{sumData}/$_->{validCount}:0} @$stats;
+
     return $self->_draw_coverage($feature,\@vals,@_);
 }
 
@@ -405,7 +408,14 @@ sub _draw_coverage {
     my $array   = shift;
 
     $array      = [split ',',$array] unless ref $array;
-    return unless @$array;
+
+    # JB: want to always show track even if no data
+    #    return unless @$array;
+    my $hasData = 1;
+    unless(@$array) {
+      $array = [1] ;
+      $hasData = 0;
+    }
 
     my ($start,$end)    = $self->effective_bounds($feature);
     my $bases_per_bin   = ($end-$start)/@$array;
@@ -416,9 +426,13 @@ sub _draw_coverage {
 	my $s      = $start + $offset;
 	my $e      = $s+1;  # fill in gaps
 	my $v      = $array->[$offset/$bases_per_bin];
+
+        $v = 0 unless($hasData); #JB: set value to zero if the original array was empty
+
 	push @parts,[$s,$s,$v];
     }
     $self->draw_plot(\@parts,@_);
+
 }
 
 sub _draw_wigfile {
