@@ -127,7 +127,7 @@ sub db_base        {
 sub userdata_base  {
     # TODO: Modify to return the following value.  Currently we are not yet
     #   ready to support file persistence anywhere other than inside the site.
-    #return "/var/www/Common/gbrowse_data".$ENV{'CONTEXT_PATH'}."/userdata";
+    return "/var/www/Common/workspaces/gbrowse_data".$ENV{'CONTEXT_PATH'}."/userdata";
     my $self = shift;
     my $base = $self->setting(general=>'userdata_base');
     return $base || File::Spec->catfile($self->persistent_base,'userdata');

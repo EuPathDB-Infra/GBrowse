@@ -498,9 +498,11 @@ sub print_datafile {
     $self->print_stylesheet($segment,$labels) 
 	if $self->get_do_stylesheet;
 
+   # The error mentioned in - https://redmine.apidb.org/issues/19788 was caused by the '/' in feature name;
+   # the following block needs further look to make sure it's working. 
     if (@$labels == 1) {
-	$self->dump_track($labels->[0],$segment);
-	return;
+	   $self->dump_track($labels->[0],$segment); 
+	   return;
     }
 
     # We don't handle heterogeneous downloads (multiple tracks with different database backends)
