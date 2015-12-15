@@ -211,7 +211,7 @@ sub render_image {
     }
 
     my $convert_to_pdf;
-    if ($format eq 'PDF' && `which inkscape`) {
+    if ($format eq 'PDF' && `which inkscape 2>/dev/null`) {
 	$convert_to_pdf++;
 	$format = 'GD::SVG';
     }
