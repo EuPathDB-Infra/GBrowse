@@ -2578,7 +2578,7 @@ sub can_generate_pdf {
     return $CAN_PDF = $source->global_setting('generate pdf') 
 	if defined $source->global_setting('generate pdf');
 
-    return $CAN_PDF=0 unless `which inkscape`;
+    return $CAN_PDF=0 unless `which inkscape 2>/dev/null`;
     # see whether we have the needed .inkscape and .gnome2 directories
     my $home = (getpwuid($<))[7];
     my $user = (getpwuid($<))[0];
