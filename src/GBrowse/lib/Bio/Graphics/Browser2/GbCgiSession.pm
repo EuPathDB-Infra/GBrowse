@@ -40,18 +40,18 @@ sub logPrefix {
 sub flush {
     my $self = shift;
 
-    print STDERR logPrefix(0) . "flush() called\n";
+    #print STDERR logPrefix(0) . "flush() called\n";
 
     # Would it be better to die or err if something very basic is wrong here? 
     # I'm trying to address the DESTROY related warning
     # from: http://rt.cpan.org/Ticket/Display.html?id=17541
     # return unless defined $self;
 
-    print STDERR logPrefix(0) . "Session is empty; returning with no action.\n" unless $self->id;
+    #print STDERR logPrefix(0) . "Session is empty; returning with no action.\n" unless $self->id;
     return unless $self->id;            # <-- empty session
 
     # neither new, nor deleted nor modified
-    print STDERR logPrefix(0) . "Session is not empty but is not new, deleted, or modified; returning with no action.\n" if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
+    #print STDERR logPrefix(0) . "Session is not empty but is not new, deleted, or modified; returning with no action.\n" if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
     return if !defined($self->{_STATUS}) or $self->{_STATUS} == STATUS_UNSET;
 
     if ( $self->_test_status(STATUS_NEW) && $self->_test_status(STATUS_DELETED) ) {
@@ -64,7 +64,7 @@ sub flush {
     my $sid = $self->id;
 
     if ( $self->_test_status(STATUS_DELETED) ) {
-        print STDERR logPrefix(0) . "Deleting GBrowse session with id $sid\n";
+        #print STDERR logPrefix(0) . "Deleting GBrowse session with id $sid\n";
         defined($driver->remove($self->id)) or
             return $self->set_error( logPrefix(1) . "flush(): couldn't remove session data: " . $driver->errstr );
         $self->{_DATA} = {};                        # <-- removing all the data, making sure
@@ -74,7 +74,7 @@ sub flush {
 
     if ( $self->_test_status(STATUS_NEW | STATUS_MODIFIED) ) {
 
-        print STDERR logPrefix(0) . "Updating value of GBrowse session with id $sid\n";
+        #print STDERR logPrefix(0) . "Updating value of GBrowse session with id $sid\n";
 
         # convert session data to string for storing
         my $datastr = $serializer->freeze( $self->dataref ) or
@@ -105,7 +105,7 @@ sub flush {
         while ( $remainingAttempts > 0 && !$success ) {
 
             # store the session
-            print STDERR logPrefix(0) . "Attempting to store session for SID $sid.  $remainingAttempts attempts remaining.\n";
+            #print STDERR logPrefix(0) . "Attempting to store session for SID $sid.  $remainingAttempts attempts remaining.\n";
             if ( ! defined($driver->store($self->id, $datastr)) ) {
                 print STDERR logPrefix(1) . "store() attempt failed; couldn't store datastr: " . $driver->errstr;
                 $remainingAttempts--;
@@ -113,7 +113,7 @@ sub flush {
             }
 
             # seem to have stored data ok, but let's make sure
-            print STDERR logPrefix(0) . "Testing session write for sid $sid\n";
+            #print STDERR logPrefix(0) . "Testing session write for sid $sid\n";
             my $error = 0;
             my $testSession = Bio::Graphics::Browser2::GbCgiSession->load($dsn, $sid, $dsn_args, $readonly) or $error = 1;
             if ( $error ) {
@@ -122,7 +122,7 @@ sub flush {
                 next;
             }
             if ( $testSession->is_expired || $testSession->is_empty ) {
-                print STDERR logPrefix(1) . "Very recently stored session is expired or empty!\n";
+                #print STDERR logPrefix(1) . "Very recently stored session is expired or empty!\n";
                 $remainingAttempts--;
                 next;
             }
@@ -139,7 +139,7 @@ sub flush {
         }
     }
 
-    print STDERR logPrefix(0) . "flush() complete\n";
+    #print STDERR logPrefix(0) . "flush() complete\n";
     return 1;
 }
 
