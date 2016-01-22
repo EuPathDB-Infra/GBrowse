@@ -200,12 +200,20 @@ sub categorize_track {
 	    : $render->translate('SHARED_WITH_ME_CATEGORY');
 	return "$cat:".$render->user_tracks->title($user_labels->{$label});
     }
-    
+
+
     my $category;
     for my $l ($render->language->language) {
 	$category      ||= $render->setting($label=>"category:$l");
     }
+
+
     $category        ||= $render->setting($label => 'category');
+
+    if(ref($category) eq 'CODE') {
+      $category = eval {$category->($label)};
+    }
+
     $category        ||= '';  # prevent uninit variable warnings
     $category         =~ s/^["']//;  # get rid of leading quotes
     $category         =~ s/["']$//;  # get rid of trailing quotes
