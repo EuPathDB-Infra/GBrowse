@@ -189,10 +189,10 @@ sub categorize_track {
     my $render      = $self->render;
     my $user_labels = $render->get_usertrack_labels;
 
-    return $render->translate('OVERVIEW') if $label =~ /:overview$/;
-    return $render->translate('REGION')   if $label =~ /:region$/;
+#    return $render->translate('OVERVIEW') if $label =~ /:overview$/;
+#    return $render->translate('REGION')   if $label =~ /:region$/;
     return $render->translate('EXTERNAL') if $label =~ /^(http|ftp|file):/;
-    return $render->translate('ANALYSIS') if $label =~ /^plugin:/;
+#    return $render->translate('ANALYSIS') if $label =~ /^plugin:/;
 
     if ($user_labels->{$label}) {
 	my $cat = $render->user_tracks->is_mine($user_labels->{$label}) 
@@ -217,6 +217,8 @@ sub categorize_track {
     $category        ||= '';  # prevent uninit variable warnings
     $category         =~ s/^["']//;  # get rid of leading quotes
     $category         =~ s/["']$//;  # get rid of trailing quotes
+
+
     return $category ||= $render->translate('GENERAL');
 }
 
