@@ -63,8 +63,10 @@ sub render_track_listing {
     # Plugin tracks
     # External tracks
     my %track_groups;
+
+
     foreach (@labels) {
-	my $category = $self->categorize_track($_);
+	my $category = $self->categorize_track($_, \@labels);
 	push @{$track_groups{$category}},$_;
     }
 
@@ -185,6 +187,7 @@ sub tableize {
 sub categorize_track {
     my $self   = shift;
     my $label  = shift;
+    my $allLabels = shift;
 
     my $render      = $self->render;
     my $user_labels = $render->get_usertrack_labels;
@@ -211,7 +214,7 @@ sub categorize_track {
     $category        ||= $render->setting($label => 'category');
 
     if(ref($category) eq 'CODE') {
-      $category = eval {$category->($label)};
+      $category = eval {$category->($label, $allLabels) };
     }
 
     $category        ||= '';  # prevent uninit variable warnings

@@ -94,9 +94,12 @@ sub render_one_track {
 			     -src         => "$button_url/$star"}
 	);
 
-    my $category    = $self->categorize_track($label);
+
+
+#    my $category    = $self->categorize_track($label);
     my $clickaction = "gbToggleTrack('$label')";
-    $clickaction   .= ";gbTurnOff('${category}_section')" if $category;
+
+#    $clickaction   .= ";gbTurnOff('${category}_section')" if $category;
 
     my @args;
     push @args, (-class       => "@classes");
