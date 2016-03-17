@@ -670,6 +670,8 @@ sub draw_label {
 			      $x,
 			      $y,
 			      $label);
+          
+          $self->panel->{rendered_label} = 1;
 
     } else {
 	$self->SUPER::draw_label(@_);
