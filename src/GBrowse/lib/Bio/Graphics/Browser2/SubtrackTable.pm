@@ -68,6 +68,13 @@ sub elements {
 	my @fields      = grep {!/^[=*:]/}        @data;
 	my ($id)        = grep {length} map {/^=([\d\w]+)/ && $1 } @data;
 	my ($label)     = grep {length} map {/^:(.+)/      && $1 } @data;
+
+        unless($label) {
+          my @selectors = $self->selectors();
+          my ($index) = grep { $selectors[$_]->[2] eq 'display_name' } (0 .. @selectors-1);
+          $label = $data[$index];
+        }
+
 	my ($selected)  = grep {$_ eq '*'}       @data;
 	$id           ||= join ';',map {/^~(.+)/ ? $1 : $_} @fields;
 	$elements{$id} = { index    => $index++,

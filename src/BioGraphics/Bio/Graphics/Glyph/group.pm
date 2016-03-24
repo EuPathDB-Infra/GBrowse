@@ -66,6 +66,9 @@ sub draw_label {
 
     $self->SUPER::draw_label(@_) unless $panel->{suppress_key};
 
+    # JB:  wiggle plots want to draw the label twice
+    return if $self->panel->{rendered_label};
+
     my ($gd,$left,$top,$partno,$total_parts) = @_;
     my $font = $self->labelfont;
 
