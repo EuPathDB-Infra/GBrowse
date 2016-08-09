@@ -1165,8 +1165,8 @@ sub userdata_upload {
 								 "[$from_url]"),
 							 a({-href=>"javascript:addAnUploadField('custom_list_start', '$url','$upload_label',  '$remove_label' , 'upload','$help_link')",
 									-id=>'file_adder',
-								 },"[$from_file]"),
-               span({-style=>'margin-left:10pt;font-weight:bold;color:darkred;font-size:120%;font-style:italic'},'&nbsp;&nbsp;Attention: the URL should not be a https (SSL) one.')
+								 },"[$from_file]")
+              #, span({-style=>'margin-left:10pt;font-weight:bold;color:darkred;font-size:120%;font-style:italic'},'&nbsp;&nbsp;Attention: the URL should not be a https (SSL) one.')
              );
 		$html .= div({-id=>'custom_list_start'},'');
     return $html;
