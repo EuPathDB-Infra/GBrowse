@@ -63,8 +63,10 @@ sub render_track_listing {
     # Plugin tracks
     # External tracks
     my %track_groups;
+
+
     foreach (@labels) {
-	my $category = $self->categorize_track($_);
+	my $category = $self->categorize_track($_, \@labels);
 	push @{$track_groups{$category}},$_;
     }
 
@@ -185,14 +187,15 @@ sub tableize {
 sub categorize_track {
     my $self   = shift;
     my $label  = shift;
+    my $allLabels = shift;
 
     my $render      = $self->render;
     my $user_labels = $render->get_usertrack_labels;
 
-    return $render->translate('OVERVIEW') if $label =~ /:overview$/;
-    return $render->translate('REGION')   if $label =~ /:region$/;
+#    return $render->translate('OVERVIEW') if $label =~ /:overview$/;
+#    return $render->translate('REGION')   if $label =~ /:region$/;
     return $render->translate('EXTERNAL') if $label =~ /^(http|ftp|file):/;
-    return $render->translate('ANALYSIS') if $label =~ /^plugin:/;
+#    return $render->translate('ANALYSIS') if $label =~ /^plugin:/;
 
     if ($user_labels->{$label}) {
 	my $cat = $render->user_tracks->is_mine($user_labels->{$label}) 
@@ -200,15 +203,25 @@ sub categorize_track {
 	    : $render->translate('SHARED_WITH_ME_CATEGORY');
 	return "$cat:".$render->user_tracks->title($user_labels->{$label});
     }
-    
+
+
     my $category;
     for my $l ($render->language->language) {
 	$category      ||= $render->setting($label=>"category:$l");
     }
+
+
     $category        ||= $render->setting($label => 'category');
+
+    if(ref($category) eq 'CODE') {
+      $category = eval {$category->($label, $allLabels) };
+    }
+
     $category        ||= '';  # prevent uninit variable warnings
     $category         =~ s/^["']//;  # get rid of leading quotes
     $category         =~ s/["']$//;  # get rid of trailing quotes
+
+
     return $category ||= $render->translate('GENERAL');
 }
 
