@@ -514,7 +514,12 @@ sub authorized_session {
   $id       ||= undef;
   my $session = $self->session($id,$shared_ok ? 'shared' : 'exclusive');
 
-  return $session unless $session->private;
+  ## XXX EuPathDB hack begin
+  ## comment out gbrowse line
+  # return $session unless $session->private;
+  ## Skip ip address matching (match_nonce) by always returning $session, even if private.
+  return $session;
+  ## XXX EuPathDB hack end
 
   if ($session->match_nonce($authority,CGI::remote_addr())) {
       return $session;
