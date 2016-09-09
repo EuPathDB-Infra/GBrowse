@@ -854,11 +854,13 @@ sub render_body {
   my @post_load = $self->get_post_load_functions;
   $output .= $self->render_html_start($title,@post_load);
   $output .= $self->render_user_header;
-  $output .= $self->render_busy_signal;
+
   $output .= $self->render_actionmenu;
   $output .= $self->render_top($title,$features);
 
+  $output .= $self->render_busy_signal;
   my $main_page   .= $self->render_navbar($region->seg);
+
 
   if ($region->feature_count > 1) {
       $main_page .= $self->render_multiple_choices($features,$self->state->{name});

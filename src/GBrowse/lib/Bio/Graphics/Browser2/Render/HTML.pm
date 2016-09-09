@@ -51,8 +51,12 @@ sub render_top {
     $html   .=  $self->snapshot_manager->render_title;
     $html   .=  $self->html_frag('html1',$self->state);
 
-    return  $err
-	  . $self->toggle({nodiv=>1},'banner','',$html);
+#    return  $err
+#	  . $self->toggle({nodiv=>1},'banner','',$html);
+
+    return $err
+           . span($html). br();
+
 }
 
 # Render Error DIV - Returns the HTML for the error display at the top of the page.
@@ -632,7 +636,7 @@ sub render_title {
     my $error = shift;
     my $settings = $self->state;
     return $settings->{head}
-        ? h1({-style=>'margin-bottom:-1pt',-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
+        ? h1({-style=>'margin-top:0px; margin-bottom:0px; text-align:center',-id=>'page_title',-class=>$error ? 'error' : 'normal'},$title)
 	: '';
 }
 
@@ -669,7 +673,8 @@ sub render_busy_signal {
     return img({
         -id    => 'busy_indicator',
         -src   => $self->data_source->button_url.'/spinner.gif',
-        -style => 'position: fixed; top: 5px; left: 5px; display: none',
+#        -style => 'position: fixed; top: 5px; left: 5px; display: none',
+        -style => 'display: none',
         -alt   => ($self->translate('WORKING')||'')
        });
 }
@@ -741,7 +746,8 @@ sub render_actionmenu {
 			     li($about_me_link),
 			  )),
 	);
-    return div({-class=>'datatitle'},$file_menu,$login,br({-clear=>'all'}));
+#    return div({-class=>'datatitle'},$file_menu,$login,br({-clear=>'all'}));
+    return div({-class=>''},$file_menu);
 }
 
 # Render Login - Returns the HTML for the login links on the top-right corner of the screen.
@@ -2183,15 +2189,17 @@ sub source_menu {
       @sources          = sort {$descriptions{$a} cmp $descriptions{$b}} (@sources,$current_source);
   }
 
-  return b($self->translate('DATA_SOURCE')).br.
+  return 
     ( $sources ?
+      b($self->translate('DATA_SOURCE')).br.
       popup_menu(-name     => 'source',
 		 -values   => \@sources,
 		 -labels   => \%descriptions,
 		 -default  => $self->data_source->name,
 		 -onChange => 'this.form.submit()',
 		)
-	: $globals->data_source_description($self->session->source)
+#	: $globals->data_source_description($self->session->source)
+	: ""
       );
 }
 
