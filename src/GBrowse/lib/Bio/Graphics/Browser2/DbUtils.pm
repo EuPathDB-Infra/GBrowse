@@ -11,7 +11,7 @@ require Exporter;
 
 =head1 NAME
 
-ApiCommonWebsite::Model::DbUtils - utility methods for database 
+EuPathSiteCommon::Model::DbUtils - utility methods for database 
 connection configuration.
 
 =cut
