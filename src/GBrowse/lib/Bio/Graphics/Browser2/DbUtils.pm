@@ -11,7 +11,7 @@ require Exporter;
 
 =head1 NAME
 
-EuPathSiteCommon::Model::DbUtils - utility methods for database 
+WDK::Model::DbUtils - utility methods for database 
 connection configuration.
 
 =cut
