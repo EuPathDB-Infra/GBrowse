@@ -692,7 +692,7 @@ sub render_actionmenu {
 
     # Pass the gff link to a javascript function which will add the missing parameters that are determined client-side
     push @export_links,a({-href=>'#',-onclick=>"Controller.gbgff_link('". $self->gff_dump_link ."')"}, $self->translate('DUMP_GFF'));
-    push @export_links,a({-href=>'#',-onclick=>"Controller.gbgff_link('". $self->dna_dump_link ."')"}, $self->translate('DUMP_SEQ'));
+#    push @export_links,a({-href=>'#',-onclick=>"Controller.gbgff_link('". $self->dna_dump_link ."')"}, $self->translate('DUMP_SEQ'));
 
     push @export_links,a({-href=>'javascript:'.$self->galaxy_link},        $self->translate('SEND_TO_GALAXY'))
 	if $self->data_source->global_setting('galaxy outgoing');
