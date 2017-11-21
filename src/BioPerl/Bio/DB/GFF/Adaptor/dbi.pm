@@ -738,13 +738,13 @@ sub do_straight_join { 0 }  # false by default
 
  Title   : string_match
  Usage   : $string = $db->string_match($field,$value)
- Function: create a SQL fragment for performing exact or regexp string matching
+ Function: create an SQL fragment for performing exact or regexp string matching
  Returns : query string
  Args    : the table field and match value
  Status  : public
 
 This method examines the passed value for meta characters.  If so it
-produces a SQL fragment that performs a regular expression match.
+produces an SQL fragment that performs a regular expression match.
 Otherwise, it produces a fragment that performs an exact string match.
 
 This method is not used in the module, but is available for use by
@@ -763,7 +763,7 @@ sub string_match {
 
  Title   : exact_match
  Usage   : $string = $db->exact_match($field,$value)
- Function: create a SQL fragment for performing exact string matching
+ Function: create an SQL fragment for performing exact string matching
  Returns : query string
  Args    : the table field and match value
  Status  : public
@@ -848,10 +848,10 @@ Get or set a named metavariable for the database.  Metavariables can
 be used for database-specific settings.  This method calls two
 class-specific methods which must be implemented:
 
-  make_meta_get_query()   Returns a sql fragment which given a meta
+  make_meta_get_query()   Returns an sql fragment which given a meta
                           parameter name, returns its value.  One bind
                           variable.
-  make_meta_set_query()   Returns a sql fragment which takes two bind
+  make_meta_set_query()   Returns an sql fragment which takes two bind
                           arguments, the parameter name and its value
 
 
@@ -1280,7 +1280,7 @@ sub DESTROY {
  Title   : make_features_by_name_where_part
  Usage   : $db->make_features_by_name_where_part
  Function: create the SQL fragment needed to select a feature by its group name & class
- Returns : a SQL fragment and bind arguments
+ Returns : an SQL fragment and bind arguments
  Args    : see below
  Status  : Protected
 
@@ -1329,7 +1329,7 @@ sub make_features_by_attribute_where_part {
  Title   : make_features_by_id_where_part
  Usage   : $db->make_features_by_id_where_part($ids)
  Function: create the SQL fragment needed to select a set of features by their ids
- Returns : a SQL fragment and bind arguments
+ Returns : an SQL fragment and bind arguments
  Args    : arrayref of IDs
  Status  : Protected
 
@@ -1347,7 +1347,7 @@ sub make_features_by_id_where_part {
  Title   : make_features_by_id_where_part
  Usage   : $db->make_features_by_gid_where_part($ids)
  Function: create the SQL fragment needed to select a set of features by their ids
- Returns : a SQL fragment and bind arguments
+ Returns : an SQL fragment and bind arguments
  Args    : arrayref of IDs
  Status  : Protected
 
@@ -1417,7 +1417,7 @@ END2
  Title   : make_features_order_by_part
  Usage   : ($query,@args) = $db->make_features_order_by_part()
  Function: make the ORDER BY part of the features() query
- Returns : a SQL fragment and bind arguments, if any
+ Returns : an SQL fragment and bind arguments, if any
  Args    : none
  Status  : protected
 
@@ -1438,7 +1438,7 @@ sub make_features_order_by_part {
  Title   : make_features_group_by_part
  Usage   : ($query,@args) = $db->make_features_group_by_part()
  Function: make the GROUP BY part of the features() query
- Returns : a SQL fragment and bind arguments, if any
+ Returns : an SQL fragment and bind arguments, if any
  Args    : none
  Status  : protected
 

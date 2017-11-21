@@ -48,7 +48,7 @@ the following:
  Args    : the query string and bind arguments
  Status  : public
 
-This method replaces the bind variable "?" in a SQL statement with
+This method replaces the bind variable "?" in an SQL statement with
 appropriately quoted bind arguments.  It is used internally to handle
 drivers that don't support argument binding.
 
