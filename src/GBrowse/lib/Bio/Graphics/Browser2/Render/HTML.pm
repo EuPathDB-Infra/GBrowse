@@ -2570,9 +2570,9 @@ sub toggle_section {
 		      -class => 'el_visible'},
 		     @section_body);
   my @class  = (-class=>'toggleable');
-  my @result =  $config{nodiv} ? (div({-style=>'float:left',@class},
+  my @result =  $config{nodiv} ? (div({-style=>'display:inline-block',@class},
 				      $show_ctl.$hide_ctl),$content)
-                :$config{tight}? (div({-style=>'float:left;position:absolute;z-index:10',@class},
+                :$config{tight}? (div({-style=>'display:inline-block;position:absolute;z-index:10',@class},
 				      $show_ctl.$hide_ctl).$break,$content)
                 : div({@class},$show_ctl.$hide_ctl,$content);
   return wantarray ? @result : "@result";
