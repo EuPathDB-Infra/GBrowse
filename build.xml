@@ -1,62 +1,44 @@
 <project name="GBrowse" default="Installation" basedir=".">
 
-  <!-- ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooo  Dependencies  oooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-
-  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooo    Checkout    oooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-
-  <target name="GBrowse-ChildCheckout" />
-  
-  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooo    Update    oooooooooooooooooooooooooo -->
-  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
-
-  <target name="GBrowse-ChildUpdate" />
-
   <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
   <!-- oooooooooooooooooooooooooo  Installation  oooooooooooooooooooooooooo -->
   <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
 
   <target name="GBrowse-Installation" depends="">
     <!-- nothing to install; GBrowse is installed by ApiCommonWebsite script -->
-    <echo message="Processing GBrowse dependency..."/>
+    <echo message="Processing GBrowse dependency..." />
     <ant target="defaultProjectInstall">
-      <property name="project" value="GBrowse"/>
+      <property name="project" value="GBrowse" />
     </ant>
 
     <!-- although GBrowse doesn't have component, but this call is needed to record build information. -->
     <ant target="defaultComponentInstall">
-      <property name="project" value="GBrowse"/>
+      <property name="project" value="GBrowse" />
     </ant>
   </target>
-  
+
   <target name="GBrowse-WebInstallation" depends="GBrowse-Installation">
     <!-- NEW! install gbrowse here now with minimal changes to codebase (will clean up later) -->
     <!-- $SITE_REPO/$SITE_DIR/project_home/ApiCommonWebsite/Model/bin/install_gbrowse2 $SITE_REPO/$SITE_DIR/etc/webapp.prop build_install_patch -->
     <exec dir="${projectsDir}/ApiCommonWebsite/Model/bin"
-               executable="/bin/bash"
-               failonerror="true"
-               failifexecutionfails="true">
-           <arg line="install_gbrowse2"/>
-           <arg line="${webPropFile}"/>
-           <arg line="build_install_patch"/>
-        </exec>
+          executable="/bin/bash"
+          failonerror="true"
+          failifexecutionfails="true">
+      <arg line="install_gbrowse2" />
+      <arg line="${webPropFile}" />
+      <arg line="build_install_patch" />
+    </exec>
   </target>
-  
+
   <!-- oooooooooooooooooo  Installation Postprocess  ooooooooooooooooooooo -->
 
-  <target name="GBrowse-Installation-postprocess"/>
-
-  <!-- ooooooooooooooooooooooo  Install Components  ooooooooooooooooooooooo -->
+  <target name="GBrowse-Installation-postprocess" />
 
   <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
   <!-- oooooooooooooooooooooooooooo  Release  ooooooooooooooooooooooooooooo -->
   <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
 
-  <target name="GBrowse-Release"/>
+  <target name="GBrowse-Release" />
 
 </project>
 
