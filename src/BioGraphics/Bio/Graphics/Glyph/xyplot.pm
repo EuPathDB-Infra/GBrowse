@@ -641,7 +641,7 @@ sub symbols {
 sub draw_label {
     my $self = shift;
     my ($gd,$left,$top,$partno,$total_parts) = @_;
-    # fixed the rnaseq subtrack label disappear if over 15 subtracks selected 
+    # fixed the RNA-Seq subtrack label disappear if over 15 subtracks selected 
     # 08-21-2014 Haiming Wang
     my $label = $self->label || $self->feature->display_name or return;
 
